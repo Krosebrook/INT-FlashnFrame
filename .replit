@@ -37,4 +37,6 @@ externalPort = 80
 
 [deployment]
 run = ["sh", "-c", "npm start"]
-deploymentTarget = "cloudrun"
+deploymentTarget = "static"
+build = ["npm", "run", "build"]
+publicDir = "dist"
