@@ -46,11 +46,8 @@ Preferred communication style: Simple, everyday language.
 4. Generated images displayed with download and fullscreen viewing options
 
 ### API Key Management
-- Users provide their own Gemini API keys via a modal on app launch
-- Keys are stored in memory only (session-based, not persisted to storage)
-- Keys managed through `geminiService.ts` with setApiKey/getApiKey/clearApiKey functions
-- Modal appears on first visit and after each page refresh (session-only by design)
-- Users can disconnect their key using the logout button in the header
+- Gemini API key is configured via the `GEMINI_API_KEY` environment variable
+- The key is injected at build time through Vite config
 
 ## External Dependencies
 

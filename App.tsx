@@ -3,30 +3,20 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import RepoAnalyzer from './components/RepoAnalyzer';
 import ArticleToInfographic from './components/ArticleToInfographic';
 import Home from './components/Home';
 import IntroAnimation from './components/IntroAnimation';
-import UserApiKeyModal from './components/UserApiKeyModal';
 import { ViewMode, RepoHistoryItem, ArticleHistoryItem } from './types';
-import { Github, PenTool, GitBranch, FileText, Home as HomeIcon, Key, LogOut } from 'lucide-react';
-import { setApiKey, clearApiKey, getApiKey } from './services/geminiService';
+import { Github, PenTool, GitBranch, FileText, Home as HomeIcon } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewMode>(ViewMode.HOME);
   const [showIntro, setShowIntro] = useState(true);
-  const [hasApiKey, setHasApiKey] = useState<boolean>(false);
   
   const [repoHistory, setRepoHistory] = useState<RepoHistoryItem[]>([]);
   const [articleHistory, setArticleHistory] = useState<ArticleHistoryItem[]>([]);
-
-  useEffect(() => {
-    const existingKey = getApiKey();
-    if (existingKey) {
-      setHasApiKey(true);
-    }
-  }, []);
 
   const handleIntroComplete = () => {
     setShowIntro(false);
@@ -44,20 +34,8 @@ const App: React.FC = () => {
     setArticleHistory(prev => [item, ...prev]);
   };
 
-  const handleApiKeySubmitted = (apiKey: string) => {
-    setApiKey(apiKey);
-    setHasApiKey(true);
-  };
-
-  const handleLogout = () => {
-    clearApiKey();
-    setHasApiKey(false);
-  };
-
   return (
     <div className="min-h-screen flex flex-col">
-      {!hasApiKey && <UserApiKeyModal onKeySubmitted={handleApiKeySubmitted} />}
-
       {showIntro && <IntroAnimation onComplete={handleIntroComplete} />}
 
       <header className="sticky top-4 z-50 mx-auto w-[calc(100%-1rem)] md:w-[calc(100%-2rem)] max-w-[1400px]">
@@ -77,20 +55,6 @@ const App: React.FC = () => {
             </div>
           </button>
           <div className="flex items-center gap-2 md:gap-4">
-            {hasApiKey && (
-              <>
-                <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-emerald-500/5 border border-emerald-500/10 rounded-full text-[10px] font-bold text-emerald-400 font-mono uppercase tracking-widest cursor-help" title="API Key Active">
-                  <Key className="w-3 h-3" /> Connected
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="p-2 md:p-2.5 rounded-xl bg-slate-900/50 border border-white/10 text-slate-400 hover:text-red-400 hover:border-red-500/50 transition-all"
-                  title="Disconnect API Key"
-                >
-                  <LogOut className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
-              </>
-            )}
             <a 
               href="https://github.com" 
               target="_blank" 

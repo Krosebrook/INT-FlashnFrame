@@ -6,26 +6,7 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import { RepoFileTree, Citation } from '../types';
 
-let userApiKey: string | null = null;
-
-export function setApiKey(key: string) {
-  userApiKey = key;
-}
-
-export function getApiKey(): string | null {
-  return userApiKey;
-}
-
-export function clearApiKey() {
-  userApiKey = null;
-}
-
-const getAiClient = () => {
-  if (!userApiKey) {
-    throw new Error("No API key available. Please provide your Gemini API key.");
-  }
-  return new GoogleGenAI({ apiKey: userApiKey });
-};
+const getAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export interface InfographicResult {
     imageData: string | null;
