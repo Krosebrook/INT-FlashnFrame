@@ -9,11 +9,9 @@ import { Citation, ArticleHistoryItem } from '../types';
 import { Link, Loader2, Download, Sparkles, AlertCircle, Palette, Globe, ExternalLink, BookOpen, Clock, Maximize } from 'lucide-react';
 import { LoadingState } from './LoadingState';
 import ImageViewer from './ImageViewer';
+import { useProjectContext } from '../contexts/ProjectContext';
 
-interface ArticleToInfographicProps {
-    history: ArticleHistoryItem[];
-    onAddToHistory: (item: ArticleHistoryItem) => void;
-}
+interface ArticleToInfographicProps {}
 
 const SKETCH_STYLES = [
     "Modern Editorial",
@@ -41,7 +39,8 @@ const LANGUAGES = [
   { label: "Chinese (China)", value: "Chinese" },
 ];
 
-const ArticleToInfographic: React.FC<ArticleToInfographicProps> = ({ history, onAddToHistory }) => {
+const ArticleToInfographic: React.FC<ArticleToInfographicProps> = () => {
+  const { articleHistory: history, addArticleHistory: onAddToHistory } = useProjectContext();
   const [urlInput, setUrlInput] = useState('');
   const [selectedStyle, setSelectedStyle] = useState(SKETCH_STYLES[0]);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].value);

@@ -8,6 +8,7 @@ import D3FlowChart from './D3FlowChart';
 import { DevStudioState, D3Node, ViewMode } from '../types';
 import { askNodeSpecificQuestion } from '../services/geminiService';
 import { Terminal, GitBranch, Cpu, MessageSquare, Zap, Code2, ArrowLeft, Sparkles, Bug, Search } from 'lucide-react';
+import { useProjectContext } from '../contexts/ProjectContext';
 
 interface ChatMessage {
   role: 'user' | 'model';
@@ -15,7 +16,6 @@ interface ChatMessage {
 }
 
 interface DevStudioProps {
-  initialState: DevStudioState | null;
   onNavigate: (mode: ViewMode) => void;
 }
 
@@ -25,7 +25,8 @@ const QUICK_ACTIONS = [
   { label: "Debug", icon: Bug, prompt: "What are potential failure points, security risks, or bugs common in components like this one?" },
 ];
 
-const DevStudio: React.FC<DevStudioProps> = ({ initialState, onNavigate }) => {
+const DevStudio: React.FC<DevStudioProps> = ({ onNavigate }) => {
+  const { currentProject: initialState } = useProjectContext();
   const [selectedNode, setSelectedNode] = useState<D3Node | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [questionInput, setQuestionInput] = useState('');

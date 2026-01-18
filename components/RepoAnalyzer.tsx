@@ -7,14 +7,14 @@ import React, { useState } from 'react';
 import { fetchRepoFileTree } from '../services/githubService';
 import { generateInfographic } from '../services/geminiService';
 import { RepoFileTree, ViewMode, RepoHistoryItem } from '../types';
-import { AlertCircle, Loader2, Layers, Box, Download, Sparkles, Command, Palette, Globe, Clock, Maximize, KeyRound } from 'lucide-react';
+import { AlertCircle, Loader2, Layers, Box, Download, Sparkles, Command, Palette, Globe, Clock, Maximize, KeyRound, Code2 } from 'lucide-react';
 import { LoadingState } from './LoadingState';
 import ImageViewer from './ImageViewer';
+import { useProjectContext } from '../contexts/ProjectContext';
+import { buildGraphFromFileTree } from '../utils/graphBuilder';
 
 interface RepoAnalyzerProps {
   onNavigate: (mode: ViewMode, data?: any) => void;
-  history: RepoHistoryItem[];
-  onAddToHistory: (item: RepoHistoryItem) => void;
 }
 
 const FLOW_STYLES = [
@@ -43,7 +43,8 @@ const LANGUAGES = [
   { label: "Chinese (China)", value: "Chinese" },
 ];
 
-const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddToHistory }) => {
+const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate }) => {
+  const { repoHistory: history, addRepoHistory: onAddToHistory, setCurrentProject } = useProjectContext();
   const [repoInput, setRepoInput] = useState('');
   const [selectedStyle, setSelectedStyle] = useState(FLOW_STYLES[0]);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].value);
@@ -378,6 +379,27 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate, history, onAddT
                 </div>
               </div>
           </div>
+
+          {/* Explore in DevStudio Button */}
+          {currentFileTree && currentFileTree.length > 0 && (
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={() => {
+                  const graphData = buildGraphFromFileTree(currentRepoName, currentFileTree);
+                  setCurrentProject({
+                    repoName: currentRepoName,
+                    fileTree: currentFileTree,
+                    graphData
+                  });
+                  onNavigate(ViewMode.DEV_STUDIO);
+                }}
+                className="px-6 py-3 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-xl font-semibold transition-all flex items-center gap-2 font-mono text-sm shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20"
+              >
+                <Code2 className="w-4 h-4" />
+                EXPLORE_IN_DEVSTUDIO
+              </button>
+            </div>
+          )}
         </div>
       )}
 
