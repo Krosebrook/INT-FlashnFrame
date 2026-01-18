@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { ViewMode } from '../types';
-import { GitBranch, FileText, Link, BrainCircuit, Image, Sparkles, ArrowRight } from 'lucide-react';
+import { GitBranch, FileText, Link, BrainCircuit, Image, Sparkles, ArrowRight, Wand2, Code2 } from 'lucide-react';
 
 interface HomeProps {
   onNavigate: (mode: ViewMode) => void;
@@ -22,7 +22,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         </div>
         
         <h1 className="text-6xl md:text-7xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-200 to-slate-500 font-sans leading-tight">
-          Link 2 Ink
+          Link2Ink
         </h1>
         
         <p className="text-slate-400 text-xl font-light max-w-2xl mx-auto leading-relaxed">
@@ -79,6 +79,58 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                         <div>
                             <h3 className="text-xl font-bold text-white group-hover:text-emerald-200 transition-colors">Web Article</h3>
                             <p className="text-xs text-slate-400 font-mono mt-1 group-hover:text-slate-300">Summary Infographic</p>
+                        </div>
+                    </div>
+                </button>
+            </div>
+
+            {/* Reality Engine Option */}
+            <div className="w-full flex items-center gap-4 group relative">
+                 <div className="hidden md:flex flex-col items-end w-40 shrink-0 absolute -left-44 top-1/2 -translate-y-1/2">
+                    <span className="text-xs font-mono text-pink-400 uppercase tracking-wider mb-1 text-right">Style Transfer</span>
+                    <ArrowRight className="w-5 h-5 text-pink-500" />
+                </div>
+
+                <button 
+                    onClick={() => onNavigate(ViewMode.IMAGE_EDITOR)}
+                    className="w-full glass-panel p-5 rounded-2xl hover:bg-white/10 transition-all border border-white/5 hover:border-pink-500/50 text-left group-hover:translate-x-1 group-hover:shadow-neon-violet relative overflow-hidden"
+                >
+                     <div className="absolute right-0 top-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Wand2 className="w-24 h-24 -rotate-12" />
+                    </div>
+                    <div className="flex items-center gap-5 relative z-10">
+                        <div className="p-3.5 bg-pink-500/20 rounded-xl text-pink-300 border border-pink-500/20 group-hover:bg-pink-500 group-hover:text-white transition-colors">
+                            <Wand2 className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-white group-hover:text-pink-200 transition-colors">Reality Engine</h3>
+                            <p className="text-xs text-slate-400 font-mono mt-1 group-hover:text-slate-300">Style Transfer & UI to Code</p>
+                        </div>
+                    </div>
+                </button>
+            </div>
+
+            {/* DevStudio Option */}
+            <div className="w-full flex items-center gap-4 group relative">
+                 <div className="hidden md:flex flex-col items-end w-40 shrink-0 absolute -left-44 top-1/2 -translate-y-1/2">
+                    <span className="text-xs font-mono text-cyan-400 uppercase tracking-wider mb-1 text-right">Interactive</span>
+                    <ArrowRight className="w-5 h-5 text-cyan-500" />
+                </div>
+
+                <button 
+                    onClick={() => onNavigate(ViewMode.DEV_STUDIO)}
+                    className="w-full glass-panel p-5 rounded-2xl hover:bg-white/10 transition-all border border-white/5 hover:border-cyan-500/50 text-left group-hover:translate-x-1 group-hover:shadow-neon-cyan relative overflow-hidden"
+                >
+                     <div className="absolute right-0 top-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Code2 className="w-24 h-24 -rotate-12" />
+                    </div>
+                    <div className="flex items-center gap-5 relative z-10">
+                        <div className="p-3.5 bg-cyan-500/20 rounded-xl text-cyan-300 border border-cyan-500/20 group-hover:bg-cyan-500 group-hover:text-white transition-colors">
+                            <Code2 className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-white group-hover:text-cyan-200 transition-colors">DevStudio</h3>
+                            <p className="text-xs text-slate-400 font-mono mt-1 group-hover:text-slate-300">Interactive Code Explorer</p>
                         </div>
                     </div>
                 </button>

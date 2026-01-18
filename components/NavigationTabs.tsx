@@ -5,7 +5,7 @@
 */
 
 import React from 'react';
-import { Home as HomeIcon, GitBranch, FileText, Wand2 } from 'lucide-react';
+import { Home as HomeIcon, GitBranch, FileText, Wand2, Code2 } from 'lucide-react';
 import { ViewMode } from '../types';
 
 interface NavigationTabsProps {
@@ -64,6 +64,18 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ currentView, onN
         >
           <Wand2 className="w-4 h-4" />
           <span className="hidden sm:inline">RealityEngine</span>
+        </button>
+        <button
+          onClick={() => onNavigate(ViewMode.DEV_STUDIO)}
+          className={`relative flex items-center gap-2 px-4 md:px-6 py-2 md:py-2.5 rounded-full font-medium text-sm transition-all duration-300 font-mono ${
+            currentView === ViewMode.DEV_STUDIO
+              ? 'text-cyan-100 bg-cyan-500/10 shadow-glass-inset border border-cyan-500/20'
+              : 'text-slate-500 hover:text-slate-300'
+          }`}
+          title="DevStudio (Alt+5)"
+        >
+          <Code2 className="w-4 h-4" />
+          <span className="hidden sm:inline">DevStudio</span>
         </button>
       </div>
     </div>
