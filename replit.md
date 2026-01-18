@@ -17,12 +17,39 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+- **Jan 18, 2026**: Fixed critical context integration bugs in RepoAnalyzer, ArticleToInfographic, and DevStudio (components now use useProjectContext hook instead of props)
+- **Jan 18, 2026**: Added "Explore in DevStudio" button to RepoAnalyzer with buildGraphFromFileTree utility
+- **Jan 18, 2026**: Added theme toggle button to AppHeader (cycles dark → light → solarized)
 - **Jan 2026**: Installed Tailwind CSS properly via @tailwindcss/vite plugin (removed CDN usage)
 - **Jan 2026**: Added Reality Engine and DevStudio to Home page and Navigation tabs
 - **Jan 2026**: Merged comprehensive feature set including Reality Engine (Style Transfer + UI-to-Code), DevStudio, Task Management, Theme System (dark/light/solarized), PWA support, and keyboard shortcuts
 - **Jan 2026**: Implemented centralized state management with ProjectContext and ThemeContext
 - **Jan 2026**: Added IndexedDB persistence for history and tasks
 - **Jan 2026**: Updated branding from Flash-n-Link to Link2Ink throughout the codebase
+
+## User Flow Testing Summary
+
+### Navigation Paths (All Working)
+- Home cards → GitFlow, SiteSketch, Reality Engine, DevStudio
+- NavigationTabs → All 4 main features
+- Keyboard shortcuts (Alt+1-5, Shift+?)
+- DevStudio empty state → Return to Analyzer button
+
+### GitFlow → DevStudio Integration
+- RepoAnalyzer fetches GitHub file tree
+- "Explore in DevStudio" button generates D3 graph data via buildGraphFromFileTree
+- Saves project state to context and navigates to DevStudio
+- DevStudio displays interactive force-directed graph
+
+### Components Using ProjectContext
+- RepoAnalyzer: history, addToHistory
+- ArticleToInfographic: history, addToHistory  
+- DevStudio: currentProject (repoName, fileTree, graphData)
+
+### Theme System
+- ThemeContext provides: theme, setTheme, cycleTheme
+- AppHeader displays theme toggle button with dynamic icon
+- Themes: dark (Moon), light (Sun), solarized (Palette)
 
 ## System Architecture
 
