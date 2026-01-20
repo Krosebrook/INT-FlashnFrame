@@ -25,7 +25,7 @@ const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
   useEffect(() => {
     const timer1 = setTimeout(() => {
       setPhase('formula');
-      typewriterEffect("ƒ(link) + AI → Ink");
+      typewriterEffect("ƒ(flash) + AI → Frame");
     }, 2500);
 
     const timer2 = setTimeout(() => {
@@ -77,7 +77,7 @@ const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
     canvas.width = width;
     canvas.height = height;
 
-    const chars = "010101<>{}[]/\\Σ∫πƒ∆∇LINK2INK";
+    const chars = "010101<>{}[]/\\Σ∫πƒ∆∇FLASHFRAME";
     const particles: { x: number; y: number; z: number; char: string; color: string }[] = [];
     const particleCount = 400; // Optimized count
     

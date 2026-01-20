@@ -22,7 +22,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         </div>
         
         <h1 className="text-6xl md:text-7xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-200 to-slate-500 font-sans leading-tight">
-          Link2Ink
+          Flash-n-Frame
         </h1>
         
         <p className="text-slate-400 text-xl font-light max-w-2xl mx-auto leading-relaxed">

@@ -6,7 +6,7 @@
 
 import { RepoHistoryItem, ArticleHistoryItem, Task, DevStudioState } from '../types';
 
-const DB_NAME = 'link2ink_db';
+const DB_NAME = 'flash_n_frame_db';
 const DB_VERSION = 1;
 
 const STORES = {

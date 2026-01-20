@@ -438,7 +438,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ initialState, onNavigate }) =
                 <div className="flex gap-4 animate-in slide-in-from-bottom-4">
                     <a 
                         href={`data:image/png;base64,${currentState.imageData}`}
-                        download="link2ink-style-transfer.png"
+                        download="flash-n-frame-style-transfer.png"
                         className="flex-1 glass-panel py-4 text-white hover:bg-white/10 rounded-2xl font-bold text-center transition-all flex items-center justify-center gap-2 font-mono text-sm border border-white/10"
                     >
                         <Download className="w-4 h-4" /> DOWNLOAD_PNG

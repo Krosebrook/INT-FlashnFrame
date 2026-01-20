@@ -2,7 +2,7 @@
 
 ## Overview
 
-Link2Ink is a visual intelligence platform that transforms content into professional infographics. It offers these core features:
+Flash-n-Frame is a visual intelligence platform that transforms content into professional infographics. It offers these core features:
 
 1. **GitFlow (GitHub Repository Analyzer)** - Converts GitHub repository structures into visual architectural blueprints and data flow diagrams
 2. **SiteSketch (Article to Infographic)** - Transforms web articles into concise, professional infographics
@@ -30,6 +30,7 @@ Preferred communication style: Simple, everyday language.
 - **Jan 2026**: Merged comprehensive feature set including Reality Engine (Style Transfer + UI-to-Code), DevStudio, Task Management, Theme System (dark/light/solarized), PWA support, and keyboard shortcuts
 - **Jan 2026**: Implemented centralized state management with ProjectContext and ThemeContext
 - **Jan 2026**: Added IndexedDB persistence for history and tasks
+- **Jan 20, 2026**: Rebranded from Link2Ink to Flash-n-Frame throughout the codebase
 - **Jan 2026**: Updated branding from Flash-n-Link to Link2Ink throughout the codebase
 
 ## User Flow Testing Summary

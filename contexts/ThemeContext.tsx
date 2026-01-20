@@ -24,12 +24,12 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     root.classList.add(`theme-${theme}`);
     
     // Save preference
-    localStorage.setItem('link2ink-theme', theme);
+    localStorage.setItem('flash-n-frame-theme', theme);
   }, [theme]);
 
   // Load preference
   useEffect(() => {
-    const saved = localStorage.getItem('link2ink-theme') as Theme;
+    const saved = localStorage.getItem('flash-n-frame-theme') as Theme;
     if (saved) setTheme(saved);
   }, []);
 
