@@ -17,6 +17,16 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+- **Jan 22, 2026**: Integrated 30+ components from 3 external projects (INFOGenius, OmniGen-dashboards, DashBoardGen):
+  - **Data Visualization (components/viz/)**: ChartRenderer, VizBar, VizArea, VizScatter, VizHeatmap, VizTreemap, VizKPI, VizTooltip, WidgetContainer
+  - **Background Effects (components/backgrounds/)**: AuroraBackground, AmbientBackgroundNoiseCanvas, DottedGlowBackground, NoiseOverlay
+  - **Dashboard UI (components/)**: MagicBar (AI command palette), AnalysisPanel, OmniSidebar, CodeEditor, ArtifactCard, SideDrawer, InfoGraphicDisplay, SearchResults
+  - **Modals (components/modals/)**: AboutModal, HelpModal, ConfirmationModal, PreviewModal
+  - **Drawer Panels (components/drawer/)**: EnhancePanel, HistoryPanel, LayoutsPanel, SettingsPanel, VariationsPanel
+  - **New Services**: omniAiService (AI widgets), semanticEngine, templateService, errorService
+  - **New Hooks**: useDataManager (CSV/JSON upload), useHistory (undo/redo)
+  - **New Utils**: aiHelpers, storage
+  - Installed recharts for data visualization charts
 - **Jan 19, 2026**: Major feature expansion with 10 new capabilities:
   - GitFlow: Dependency Graph Generator with multi-ecosystem support (npm, pip, cargo, go), version badges, and AI security analysis
   - SiteSketch: Multi-Source Comparison mode (2-3 URLs) and Key Stats Extractor
