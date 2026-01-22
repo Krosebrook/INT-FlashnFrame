@@ -85,17 +85,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
+        credentials: 'include'
       });
       
+      const data = await response.json();
+      
       if (response.ok) {
-        if (mode === 'signup') {
-          setStep('verify');
-        } else {
-          onClose();
-          window.location.reload();
-        }
+        onClose();
+        window.location.reload();
       } else {
-        const data = await response.json();
         setError(data.message || 'Authentication failed');
       }
     } catch (err) {

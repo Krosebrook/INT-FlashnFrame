@@ -1,5 +1,6 @@
 import express from "express";
-import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
+import { setupAuth, registerAuthRoutes, authStorage } from "./replit_integrations/auth";
+import bcrypt from "bcryptjs";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -10,6 +11,8 @@ const app = express();
 const PORT = process.env.NODE_ENV === "production" ? 5000 : 3001;
 
 app.use(express.json());
+
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
 
 async function startServer() {
   await setupAuth(app);
@@ -46,19 +49,95 @@ async function startServer() {
   });
 
   app.post("/api/auth/signup", async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+    try {
+      const { email, password, firstName, lastName } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      if (!PASSWORD_REGEX.test(password)) {
+        return res.status(400).json({ 
+          message: "Password must be at least 8 characters with uppercase, lowercase, number, and special character" 
+        });
+      }
+
+      const existingUser = await authStorage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(409).json({ message: "An account with this email already exists" });
+      }
+
+      const saltRounds = 12;
+      const passwordHash = await bcrypt.hash(password, saltRounds);
+
+      const user = await authStorage.createUserWithPassword(email, passwordHash, firstName, lastName);
+
+      req.login(
+        { 
+          claims: { sub: user.id, email: user.email },
+          expires_at: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60
+        } as any, 
+        (err) => {
+          if (err) {
+            console.error("Session creation error:", err);
+            return res.status(500).json({ message: "Account created but failed to log in. Please try logging in." });
+          }
+          res.json({ 
+            message: "Account created successfully!",
+            user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName }
+          });
+        }
+      );
+    } catch (error) {
+      console.error("Signup error:", error);
+      res.status(500).json({ message: "Failed to create account. Please try again." });
     }
-    res.json({ message: "Account created! Please check your email to verify." });
   });
 
   app.post("/api/auth/login", async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      const user = await authStorage.getUserByEmail(email);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      if (!user.passwordHash) {
+        return res.status(401).json({ 
+          message: "This account uses social login. Please sign in with your social account." 
+        });
+      }
+
+      const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      req.login(
+        { 
+          claims: { sub: user.id, email: user.email },
+          expires_at: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60
+        } as any, 
+        (err) => {
+          if (err) {
+            console.error("Session creation error:", err);
+            return res.status(500).json({ message: "Login failed. Please try again." });
+          }
+          res.json({ 
+            message: "Logged in successfully!",
+            user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName }
+          });
+        }
+      );
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ message: "Login failed. Please try again." });
     }
-    res.json({ message: "For email/password login, please use Replit Auth which supports email/password." });
   });
 
   if (process.env.NODE_ENV === "production") {

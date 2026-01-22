@@ -26,8 +26,10 @@ Preferred communication style: Simple, everyday language.
   - **PWA UI Components**: InstallPrompt, OfflineIndicator, OnlineIndicator, UpdatePrompt
   - **Background Sync**: Ready for offline data synchronization
   - **Push Notifications**: Infrastructure ready for push notification support
-- **Jan 22, 2026**: Comprehensive authentication system with multiple providers:
-  - **Replit Auth (Primary)**: OpenID Connect with Google, GitHub, X, Apple, email/password
+- **Jan 22, 2026**: Full user signup and authentication system:
+  - **Email/Password Signup**: Users can create accounts with secure password hashing (bcrypt)
+  - **Email/Password Login**: Authenticate with stored credentials, automatic session creation
+  - **Replit Auth (Social)**: OpenID Connect with Google, GitHub, X, Apple
   - **AuthModal Component**: Multi-tab UI (Social, Email, Magic Link, Phone, SSO)
   - **Password Requirements**: 8+ chars, uppercase, lowercase, number, special character
   - **Captcha Placeholder**: Ready for reCAPTCHA integration
@@ -35,8 +37,8 @@ Preferred communication style: Simple, everyday language.
   - **Phone Auth**: Prepared for Twilio integration  
   - **SSO Tab**: Placeholder for enterprise Okta/Azure AD/OneLogin/Auth0
   - Auth server runs on port 3001, proxied by Vite
-  - User sessions stored in PostgreSQL
-  - Routes: /api/login, /api/logout, /api/auth/user, /api/auth/magic-link, /api/auth/phone
+  - User sessions stored in PostgreSQL with 1-week expiry
+  - Routes: /api/auth/signup, /api/auth/login, /api/login, /api/logout, /api/auth/user
 - **Jan 22, 2026**: Expanded API key management with enterprise integrations:
   - **AWS Services**: Access Key, Secret Key, Region
   - **CRM & Support**: HubSpot API Key, Freshdesk API Key + Domain
