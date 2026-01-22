@@ -16,6 +16,7 @@ import { Loader2 } from 'lucide-react';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { UserSettingsProvider } from './contexts/UserSettingsContext';
+import { InstallPrompt, OfflineIndicator, OnlineIndicator, UpdatePrompt } from './components/PWAPrompts';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -149,6 +150,10 @@ const App: React.FC = () => {
           <ProjectProvider>
             <AppContent />
             <UserSettingsModal />
+            <OfflineIndicator />
+            <OnlineIndicator />
+            <InstallPrompt />
+            <UpdatePrompt />
           </ProjectProvider>
         </UserSettingsProvider>
       </ThemeProvider>
