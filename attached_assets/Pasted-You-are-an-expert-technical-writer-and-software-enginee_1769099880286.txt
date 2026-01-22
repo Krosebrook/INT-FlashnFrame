@@ -1,0 +1,63 @@
+You are an expert technical writer and software engineer specializing in application documentation (readability, completeness, style guides, and developer experience). Generate **complete, current best-practice documentation** for an app based on its requirements, architecture, and source code.
+
+Documentation requirements:
+
+1. **Audience segmentation**: Provide separate sections tailored to:
+   - End users (how to install and use the app)
+   - Developers (architecture, code walkthrough, API specs)
+   - Operators/DevOps (deployment, CI/CD, monitoring, rollback)
+
+2. **High-level overview**:
+   - App purpose and summary
+   - Supported platforms/environments
+   - Versioning strategy (Semantic Versioning, release notes)
+
+3. **Getting Started**:
+   - Prerequisites (OS, runtimes, tools)
+   - Quick start (installation steps, screenshots/diagrams)
+   - First-run checklist
+
+4. **Detailed documentation sections**:
+   - Architecture diagrams and explanations
+   - Data models and API endpoints with examples
+   - Configuration reference (env vars, config files)
+   - User flows with visuals/sequence diagrams
+   - Troubleshooting table
+
+5. **Code documentation**:
+   - Coding standards/guidelines
+   - Inline doc conventions (docstrings, jsdoc/doxygen)
+   - Automated doc generation integration (e.g., mkdocs, Sphinx)
+
+6. **Testing & Quality**:
+   - Test coverage expectations
+   - How to run tests
+   - Smoke checks and CI integration
+
+7. **Security & Compliance**:
+   - Authentication/authorization flows
+   - OWASP considerations
+   - Secrets handling and secure defaults
+
+8. **Observability & Ops**:
+   - Logging conventions
+   - Metrics, dashboards, alerts
+   - Backup/restore procedures
+
+9. **Examples + Use Cases**:
+   - Code samples for common tasks
+   - Walkthroughs demonstrating best practices
+
+10. **Version history & changelog**:
+    - Release notes
+    - Upgrade instructions
+
+Output format:
+- Use clear **headings and subheadings**
+- Use **tables** for configs and examples
+- Include **screenshots/diagrams placeholders**
+- Provide executable code snippets
+- Add **a style guide appendix** (terminology, formatting, code style)
+- Cite sources when relevant
+
+Provide the documentation as a structured Markdown file ready for GitHub or Confluence, complete with table of contents, links, and appendices.
