@@ -1,0 +1,97 @@
+{
+  "colorScheme": "light",
+  "fonts": [
+    {
+      "family": "Helvetica",
+      "count": 86
+    },
+    {
+      "family": "Arial",
+      "count": 86
+    },
+    {
+      "family": "Lucida",
+      "count": 86
+    },
+    {
+      "family": "sans-serif",
+      "count": 86
+    },
+    {
+      "family": "Rubik",
+      "count": 83
+    },
+    {
+      "family": "Roboto Condensed",
+      "count": 3
+    },
+    {
+      "family": "arial",
+      "count": 2
+    }
+  ],
+  "colors": {
+    "primary": "#2B6C85",
+    "accent": "#33475B",
+    "background": "#FFFFFF",
+    "textPrimary": "#33475B",
+    "link": "#33475B"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Rubik",
+      "heading": "Roboto Condensed"
+    },
+    "fontStacks": {
+      "body": [
+        "Rubik",
+        "Helvetica",
+        "Arial",
+        "Lucida",
+        "sans-serif"
+      ],
+      "heading": [
+        "Roboto Condensed",
+        "Helvetica",
+        "Arial",
+        "Lucida",
+        "sans-serif"
+      ],
+      "paragraph": [
+        "Rubik",
+        "Helvetica",
+        "Arial",
+        "Lucida",
+        "sans-serif"
+      ]
+    },
+    "fontSizes": {
+      "h1": "64px",
+      "h2": "51px",
+      "body": "16px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "3px"
+  },
+  "components": {},
+  "images": {
+    "logo": "https://intinc.com/wp-content/uploads/2024/03/INT-2024-logo-with-tagline-v1.png",
+    "favicon": "https://intinc.com/wp-content/uploads/2024/11/cropped-Dot-favicon-32x32.png",
+    "ogImage": "https://intinc.com/wp-content/uploads/2025/03/Home-Featured-Image.jpg"
+  },
+  "__framework_hints": [
+    "INT, Inc. (Divi Child) v.1.0.0"
+  ],
+  "__llm_logo_reasoning": {
+    "selectedIndex": 0,
+    "reasoning": "Strong indicators: header logo linking to homepage, header location, visible, highest logo on page, src contains logo, class contains logo, alt exactly matches brand name \"INT Inc.\", reasonable size. Score: 132 (clear winner by 69 points)",
+    "confidence": 0.9
+  },
+  "confidence": {
+    "buttons": 0,
+    "colors": 0,
+    "overall": 0
+  }
+}
