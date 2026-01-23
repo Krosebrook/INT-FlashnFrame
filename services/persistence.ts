@@ -7,16 +7,17 @@
 import { RepoHistoryItem, ArticleHistoryItem, Task, DevStudioState } from '../types';
 
 const DB_NAME = 'flash_n_frame_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const STORES = {
   PROJECT: 'project',
   TASKS: 'tasks',
   REPO_HISTORY: 'repo_history',
-  ARTICLE_HISTORY: 'article_history'
+  ARTICLE_HISTORY: 'article_history',
+  USER_PREFERENCES: 'user_preferences',
+  OFFLINE_QUEUE: 'offline_queue'
 };
 
-// Helper to open DB
 const openDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -38,6 +39,12 @@ const openDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(STORES.ARTICLE_HISTORY)) {
         db.createObjectStore(STORES.ARTICLE_HISTORY, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORES.USER_PREFERENCES)) {
+        db.createObjectStore(STORES.USER_PREFERENCES);
+      }
+      if (!db.objectStoreNames.contains(STORES.OFFLINE_QUEUE)) {
+        db.createObjectStore(STORES.OFFLINE_QUEUE, { keyPath: 'id', autoIncrement: true });
       }
     };
   });
@@ -146,6 +153,87 @@ export const PersistenceService = {
          resolve(res.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       };
       req.onerror = () => reject(req.error);
+    });
+  },
+
+  async saveUserPreference(key: string, value: unknown) {
+    const db = await openDB();
+    return new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORES.USER_PREFERENCES, 'readwrite');
+      tx.objectStore(STORES.USER_PREFERENCES).put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  },
+
+  async getUserPreference<T>(key: string): Promise<T | null> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORES.USER_PREFERENCES, 'readonly');
+      const req = tx.objectStore(STORES.USER_PREFERENCES).get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async getAllUserPreferences(): Promise<Record<string, unknown>> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORES.USER_PREFERENCES, 'readonly');
+      const store = tx.objectStore(STORES.USER_PREFERENCES);
+      const result: Record<string, unknown> = {};
+      
+      const cursorReq = store.openCursor();
+      cursorReq.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor) {
+          result[cursor.key as string] = cursor.value;
+          cursor.continue();
+        } else {
+          resolve(result);
+        }
+      };
+      cursorReq.onerror = () => reject(cursorReq.error);
+    });
+  },
+
+  async addToOfflineQueue(action: { type: string; payload: unknown; timestamp: number }) {
+    const db = await openDB();
+    return new Promise<number>((resolve, reject) => {
+      const tx = db.transaction(STORES.OFFLINE_QUEUE, 'readwrite');
+      const req = tx.objectStore(STORES.OFFLINE_QUEUE).add(action);
+      req.onsuccess = () => resolve(req.result as number);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async getOfflineQueue(): Promise<Array<{ id: number; type: string; payload: unknown; timestamp: number }>> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORES.OFFLINE_QUEUE, 'readonly');
+      const req = tx.objectStore(STORES.OFFLINE_QUEUE).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async clearOfflineQueue() {
+    const db = await openDB();
+    return new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORES.OFFLINE_QUEUE, 'readwrite');
+      tx.objectStore(STORES.OFFLINE_QUEUE).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  },
+
+  async removeFromOfflineQueue(id: number) {
+    const db = await openDB();
+    return new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORES.OFFLINE_QUEUE, 'readwrite');
+      tx.objectStore(STORES.OFFLINE_QUEUE).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
     });
   }
 };
