@@ -97,17 +97,18 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate }) => {
   };
 
   const handleApiError = (err: any) => {
-      if (err.message && err.message.includes("Requested entity was not found")) {
-          // This specific error often implies a Free Tier key is trying to access a Paid Model.
-          // We trigger the window reload to re-open the key selection.
-          const confirmSwitch = window.confirm(
-              "BILLING REQUIRED: The current API key does not have access to these models.\n\n" +
-              "This feature requires a paid Google Cloud Project. Please switch to a valid paid API Key."
-          );
-          if (confirmSwitch) {
-              window.location.reload();
-          }
+      const errorMsg = err.message?.toLowerCase() || '';
+      
+      if (errorMsg.includes('rate limit') || errorMsg.includes('429') || errorMsg.includes('too many requests') || errorMsg.includes('quota')) {
+          setError('Rate limit reached. Please wait a moment before trying again.');
+          return;
       }
+      
+      if (err.message && err.message.includes("Requested entity was not found")) {
+          setError('API configuration error. Please contact your system administrator.');
+          return;
+      }
+      
       setError(err.message || 'An unexpected error occurred during analysis.');
   }
 

@@ -5,7 +5,7 @@
 */
 
 import React, { useState } from 'react';
-import { PenTool, CreditCard, Keyboard, Github, Sun, Moon, Palette, Settings, LogIn, LogOut, User } from 'lucide-react';
+import { PenTool, Keyboard, Github, Sun, Moon, Palette, Settings, LogIn, LogOut, User } from 'lucide-react';
 import { ViewMode } from '../types';
 import { useTheme, Theme } from '../contexts/ThemeContext';
 import { useUserSettings } from '../contexts/UserSettingsContext';
@@ -62,11 +62,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           </div>
         </button>
         <div className="flex items-center gap-4">
-          {hasApiKey && (
-              <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-emerald-500/5 border border-emerald-500/10 rounded-full text-[10px] font-bold text-emerald-400 font-mono uppercase tracking-widest cursor-help" title="API Key Active">
-                  <CreditCard className="w-3 h-3" /> Paid Tier
-              </div>
-          )}
           {isAuthenticated && user ? (
             <div className="flex items-center gap-2">
               <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-violet-500/10 border border-violet-500/20 rounded-full">

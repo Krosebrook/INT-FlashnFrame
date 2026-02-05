@@ -137,15 +137,15 @@ export async function generateInfographic(
     let userMessage = "Failed to generate visual. Please try again.";
 
     if (errorMsg.includes("403") || errorMsg.includes("permission denied")) {
-        userMessage = "Access Denied: Please check your API key permissions. Ensure you are using a key from a paid Google Cloud Project for image generation.";
+        userMessage = "Access Denied: API key permissions issue. Please contact your system administrator.";
     } else if (errorMsg.includes("404") || errorMsg.includes("not found")) {
-        userMessage = "Model Not Found: The required model (gemini-3-pro-image-preview) is not available with your current API key or region.";
-    } else if (errorMsg.includes("429") || errorMsg.includes("quota")) {
-        userMessage = "Rate Limit Exceeded: You are sending requests too quickly. Please wait a moment and try again.";
+        userMessage = "Model Not Found: The required AI model is not available. Please contact your system administrator.";
+    } else if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("rate limit")) {
+        userMessage = "Rate Limit Exceeded: Please wait a moment before trying again.";
     } else if (errorMsg.includes("SAFETY")) {
         userMessage = "Safety Block: The content generation was blocked by safety filters. Please try a different repository or style.";
     } else if (errorMsg.includes("500")) {
-        userMessage = "Service Error: Google AI service is temporarily unavailable. Please try again later.";
+        userMessage = "Service Error: AI service is temporarily unavailable. Please try again later.";
     }
 
     throw new Error(userMessage);

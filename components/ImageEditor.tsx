@@ -136,14 +136,12 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ initialState, onNavigate }) =
           setDashboardResult(result);
       }
     } catch (error: any) {
-      if (error.message && error.message.includes("Requested entity was not found")) {
-        const confirmSwitch = window.confirm(
-            "BILLING REQUIRED: The current API key does not have access to these models.\n\n" +
-            "This feature requires a paid Google Cloud Project. Please switch to a valid paid API Key."
-        );
-        if (confirmSwitch) {
-            window.location.reload();
-        }
+      const errorMsg = error.message?.toLowerCase() || '';
+      
+      if (errorMsg.includes('rate limit') || errorMsg.includes('429') || errorMsg.includes('too many requests') || errorMsg.includes('quota')) {
+        alert('Rate limit reached. Please wait a moment before trying again.');
+      } else if (error.message && error.message.includes("Requested entity was not found")) {
+        alert('API configuration error. Please contact your system administrator.');
       } else {
         alert(error.message || 'An error occurred while processing.');
       }

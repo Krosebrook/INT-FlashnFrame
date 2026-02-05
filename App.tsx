@@ -17,6 +17,8 @@ import { ProjectProvider } from './contexts/ProjectContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { UserSettingsProvider } from './contexts/UserSettingsContext';
 import { InstallPrompt, OfflineIndicator, OnlineIndicator, UpdatePrompt } from './components/PWAPrompts';
+import { RateLimitProvider, useRateLimitContext } from './contexts/RateLimitContext';
+import { RateLimitBanner } from './components/RateLimitBanner';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -142,19 +144,36 @@ const AppContent: React.FC = () => {
   );
 };
 
+const GlobalRateLimitBanner: React.FC = () => {
+  const { isRateLimited, service, remainingSeconds, clearRateLimit } = useRateLimitContext();
+  
+  if (!isRateLimited) return null;
+  
+  return (
+    <RateLimitBanner
+      service={service}
+      remainingSeconds={remainingSeconds}
+      onDismiss={clearRateLimit}
+    />
+  );
+};
+
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <UserSettingsProvider>
-          <ProjectProvider>
-            <AppContent />
-            <UserSettingsModal />
-            <OfflineIndicator />
-            <OnlineIndicator />
-            <InstallPrompt />
-            <UpdatePrompt />
-          </ProjectProvider>
+          <RateLimitProvider>
+            <ProjectProvider>
+              <AppContent />
+              <GlobalRateLimitBanner />
+              <UserSettingsModal />
+              <OfflineIndicator />
+              <OnlineIndicator />
+              <InstallPrompt />
+              <UpdatePrompt />
+            </ProjectProvider>
+          </RateLimitProvider>
         </UserSettingsProvider>
       </ThemeProvider>
     </QueryClientProvider>

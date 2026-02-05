@@ -1,229 +1,67 @@
-# replit.md
+# Flash-n-Frame
 
 ## Overview
 
-Flash-n-Frame is a visual intelligence platform that transforms content into professional infographics. It offers these core features:
+Flash-n-Frame is a visual intelligence platform that transforms content into professional infographics using Google's Gemini AI. Its core capabilities include:
 
-1. **GitFlow (GitHub Repository Analyzer)** - Converts GitHub repository structures into visual architectural blueprints and data flow diagrams
-2. **SiteSketch (Article to Infographic)** - Transforms web articles into concise, professional infographics
-3. **Reality Engine** - AI-powered style transfer and wireframe-to-code generation
-4. **DevStudio** - Interactive development environment for exploring repository graphs with D3 visualization
+-   **GitFlow (GitHub Repository Analyzer)**: Converts GitHub repository structures into visual architectural blueprints and data flow diagrams.
+-   **SiteSketch (Article to Infographic)**: Transforms web articles into concise, professional infographics.
+-   **Reality Engine**: Provides AI-powered style transfer and wireframe-to-code generation.
+-   **DevStudio**: An interactive development environment for exploring repository graphs with D3 visualization.
 
-The application is powered by Google's Gemini AI for generating visual content from structured data.
+The platform aims to revolutionize content visualization and development workflow efficiency.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes
-
-- **Jan 24, 2026**: Integrated branded neon-style images throughout the app:
-  - **Home Page Feature Cards**: GitHub (cloud), SiteSketch (analytics), RealityEngine (creative palette), DevStudio (projects folder)
-  - **Splash Page**: Floating animated icons with float animation (security, cloud, analytics, creative, projects)
-  - **Navigation Tabs**: Small image icons replace Lucide icons for visual consistency
-  - **PWA Manifest**: Added branded icon to manifest icons array
-  - All images stored in `/public/images/` with descriptive names
-- **Jan 24, 2026**: Resource efficiency optimizations:
-  - **API Caching**: Added `services/cache.ts` with TTL-based memory cache, request deduplication, and exponential backoff
-  - **GitHub Service**: Caches repository tree responses for 5 minutes, deduplicates concurrent requests
-  - **Animation Optimizations**: All canvas animations now have FPS caps (20-30 FPS) and pause when tab is hidden via Page Visibility API
-  - **Reduced Intervals**: LoadingState logs (800ms → 2.5s), useDataManager streaming (2s → 5s), offline check (5s → 30s)
-  - **Particle Reduction**: Splash page particles reduced from 300 to 200
-  - **Visibility-aware Updates**: All setInterval hooks now skip updates when document.hidden is true
-  - Target: <5% CPU idle, minimized memory footprint
-- **Jan 23, 2026**: New INT Inc branded animated splash page:
-  - Circuit pattern background image (splash-circuit-bg.png)
-  - Canvas-based warp drive animation with flying characters (0, 1, F, L, A, S, H, etc.)
-  - Particles colored in purple (#8b5cf6), teal (#2B6C85), and pink (#ec4899)
-  - Purple/teal/pink bokeh glow effects with pulse animations
-  - Glassmorphism icon container with Zap icon and glow effect
-  - Gradient "Flash-n-Frame" title using Roboto Condensed font
-  - Loading progress bar with purple-teal-pink gradient
-  - "Enter Studio" button appears after loading (particles slow down when ready)
-  - Warp speed accelerates on exit transition
-  - "Powered by INT Inc" footer
-  - Replaces previous IntroAnimation component
-- **Jan 22, 2026**: Complete Progressive Web App (PWA) implementation:
-  - **Enhanced Manifest**: Icons (72x72, 192x192, 512x512), shortcuts, file handlers, share target
-  - **Advanced Service Worker**: Multiple caching strategies (network-first, cache-first, stale-while-revalidate)
-  - **Offline Support**: Dedicated offline.html page with auto-reconnect
-  - **PWA Hooks**: useInstallPrompt, useOnlineStatus, useServiceWorker, useLocalStorage
-  - **File Handling**: useFileUpload, useFileDownload, useDragAndDrop hooks
-  - **PWA UI Components**: InstallPrompt, OfflineIndicator, OnlineIndicator, UpdatePrompt
-  - **Background Sync**: Ready for offline data synchronization
-  - **Push Notifications**: Infrastructure ready for push notification support
-- **Jan 22, 2026**: Full user signup and authentication system:
-  - **Email/Password Signup**: Users can create accounts with secure password hashing (bcrypt)
-  - **Email/Password Login**: Authenticate with stored credentials, automatic session creation
-  - **Replit Auth (Social)**: OpenID Connect with Google, GitHub, X, Apple
-  - **AuthModal Component**: Multi-tab UI (Social, Email, Magic Link, Phone, SSO)
-  - **Password Requirements**: 8+ chars, uppercase, lowercase, number, special character
-  - **Captcha Placeholder**: Ready for reCAPTCHA integration
-  - **Magic Link**: Prepared for SendGrid integration
-  - **Phone Auth**: Prepared for Twilio integration  
-  - **SSO Tab**: Placeholder for enterprise Okta/Azure AD/OneLogin/Auth0
-  - Auth server runs on port 3001, proxied by Vite
-  - User sessions stored in PostgreSQL with 1-week expiry
-  - Routes: /api/auth/signup, /api/auth/login, /api/login, /api/logout, /api/auth/user
-- **Jan 22, 2026**: Expanded API key management with enterprise integrations:
-  - **AWS Services**: Access Key, Secret Key, Region
-  - **CRM & Support**: HubSpot API Key, Freshdesk API Key + Domain
-  - **Security**: Bitwarden Client ID + Secret
-  - **Enterprise**: vsaX API Key
-  - **Microsoft 365**: Client ID/Secret/Tenant ID, Teams Webhook, SharePoint Site URL, Power Apps Environment
-  - Settings modal now organized into 7 sections for easier navigation
-- **Jan 22, 2026**: Added user-specific API key management system:
-  - UserSettingsContext stores keys in browser localStorage (private to each user)
-  - UserSettingsModal for entering GitHub, Gemini, OpenAI, Anthropic, Notion, Google Drive keys
-  - Settings button added to header (gear icon, glows green when keys are configured)
-  - Updated geminiService and githubService to use user-provided keys with fallback to environment variables
-  - Users can now access their own private GitHub repositories with personal tokens
-- **Jan 22, 2026**: Integrated 30+ components from 3 external projects (INFOGenius, OmniGen-dashboards, DashBoardGen):
-  - **Data Visualization (components/viz/)**: ChartRenderer, VizBar, VizArea, VizScatter, VizHeatmap, VizTreemap, VizKPI, VizTooltip, WidgetContainer
-  - **Background Effects (components/backgrounds/)**: AuroraBackground, AmbientBackgroundNoiseCanvas, DottedGlowBackground, NoiseOverlay
-  - **Dashboard UI (components/)**: MagicBar (AI command palette), AnalysisPanel, OmniSidebar, CodeEditor, ArtifactCard, SideDrawer, InfoGraphicDisplay, SearchResults
-  - **Modals (components/modals/)**: AboutModal, HelpModal, ConfirmationModal, PreviewModal
-  - **Drawer Panels (components/drawer/)**: EnhancePanel, HistoryPanel, LayoutsPanel, SettingsPanel, VariationsPanel
-  - **New Services**: omniAiService (AI widgets), semanticEngine, templateService, errorService
-  - **New Hooks**: useDataManager (CSV/JSON upload), useHistory (undo/redo)
-  - **New Utils**: aiHelpers, storage
-  - Installed recharts for data visualization charts
-- **Jan 19, 2026**: Major feature expansion with 10 new capabilities:
-  - GitFlow: Dependency Graph Generator with multi-ecosystem support (npm, pip, cargo, go), version badges, and AI security analysis
-  - SiteSketch: Multi-Source Comparison mode (2-3 URLs) and Key Stats Extractor
-  - Reality Engine: Component Library Scanner, Responsive Variant Generator, Dashboard Generator
-  - DevStudio: AI Code Review, Test Case Generator, Documentation Generator, Gap/Bottleneck Catcher
-- **Jan 18, 2026**: Fixed critical context integration bugs in RepoAnalyzer, ArticleToInfographic, and DevStudio (components now use useProjectContext hook instead of props)
-- **Jan 18, 2026**: Added "Explore in DevStudio" button to RepoAnalyzer with buildGraphFromFileTree utility
-- **Jan 18, 2026**: Added theme toggle button to AppHeader (cycles dark → light → solarized)
-- **Jan 2026**: Installed Tailwind CSS properly via @tailwindcss/vite plugin (removed CDN usage)
-- **Jan 2026**: Added Reality Engine and DevStudio to Home page and Navigation tabs
-- **Jan 2026**: Merged comprehensive feature set including Reality Engine (Style Transfer + UI-to-Code), DevStudio, Task Management, Theme System (dark/light/solarized), PWA support, and keyboard shortcuts
-- **Jan 2026**: Implemented centralized state management with ProjectContext and ThemeContext
-- **Jan 2026**: Added IndexedDB persistence for history and tasks
-- **Jan 20, 2026**: Rebranded from Link2Ink to Flash-n-Frame throughout the codebase
-- **Jan 2026**: Updated branding from Flash-n-Link to Link2Ink throughout the codebase
-
-## User Flow Testing Summary
-
-### Navigation Paths (All Working)
-- Home cards → GitFlow, SiteSketch, Reality Engine, DevStudio
-- NavigationTabs → All 4 main features
-- Keyboard shortcuts (Alt+1-5, Shift+?)
-- DevStudio empty state → Return to Analyzer button
-
-### GitFlow → DevStudio Integration
-- RepoAnalyzer fetches GitHub file tree
-- "Explore in DevStudio" button generates D3 graph data via buildGraphFromFileTree
-- Saves project state to context and navigates to DevStudio
-- DevStudio displays interactive force-directed graph
-
-### Components Using ProjectContext
-- RepoAnalyzer: history, addToHistory
-- ArticleToInfographic: history, addToHistory  
-- DevStudio: currentProject (repoName, fileTree, graphData)
-
-### Theme System
-- ThemeContext provides: theme, setTheme, cycleTheme
-- AppHeader displays theme toggle button with dynamic icon
-- Themes: dark (Moon), light (Sun), solarized (Palette)
-
-## Documentation
-
-Comprehensive documentation is available in the `docs/` folder:
-
-- **[API.md](docs/API.md)** - API reference for all services (Gemini, GitHub, User Settings, Persistence)
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture, data flow diagrams, directory structure
-- **[FEATURES.md](docs/FEATURES.md)** - Detailed feature descriptions for all modules
-- **[CHANGELOG.md](docs/CHANGELOG.md)** - Version history and release notes
-- **[BEST_PRACTICES.md](docs/BEST_PRACTICES.md)** - Development guidelines, code style, security, testing
-
 ## System Architecture
 
 ### Frontend Architecture
-- **Framework**: React 19 with TypeScript
-- **Build Tool**: Vite 6 with @tailwindcss/vite plugin
-- **Styling**: Tailwind CSS v4 with custom theme configuration
-- **Visualization**: D3.js for interactive force-directed graph rendering
-- **Icons**: Lucide React icon library
-- **State Management**: React Context API (ThemeContext, ProjectContext)
-- **PWA**: Progressive Web App with service worker and offline capabilities
+-   **Framework**: React 19 with TypeScript.
+-   **Build Tool**: Vite 6 with `@tailwindcss/vite` plugin.
+-   **Styling**: Tailwind CSS v4 with custom themes (dark, light, solarized).
+-   **Visualization**: D3.js for interactive force-directed graph rendering.
+-   **State Management**: React Context API (ThemeContext, ProjectContext).
+-   **PWA**: Progressive Web App with service worker for offline capabilities and enhanced user experience.
+-   **UI/UX Decisions**: Incorporates branded neon-style images, a dynamic splash page with circuit patterns and animated elements, and consistent theme-based UI elements across the application.
 
 ### Component Structure
-- `App.tsx` - Root component with lazy loading, view navigation, and keyboard shortcuts
-- `components/AppHeader.tsx` - Main navigation header with theme toggle
-- `components/NavigationTabs.tsx` - Tab-based navigation (GitFlow, SiteSketch, RealityEngine, DevStudio)
-- `components/Home.tsx` - Landing page with navigation cards to all features
-- `components/RepoAnalyzer.tsx` - GitHub repository analysis interface (GitFlow)
-- `components/ArticleToInfographic.tsx` - Article-to-infographic conversion (SiteSketch)
-- `components/ImageEditor.tsx` - Reality Engine (Style Transfer + UI-to-Code)
-- `components/DevStudio.tsx` - Interactive code exploration with D3 graphs
-- `components/D3FlowChart.tsx` - D3-based interactive graph visualization
-- `components/IntroAnimation.tsx` - Canvas-based intro animation (7.5s duration)
-- `components/HistoryGrid.tsx` - Grid display of analysis history
-- `components/InfographicResultCard.tsx` - Card for displaying generated infographics
-- `components/KeyboardShortcutsModal.tsx` - Keyboard shortcuts help modal
-- `components/TaskList.tsx` - Task management UI
-
-### Contexts
-- `contexts/ThemeContext.tsx` - Theme management (dark/light/solarized) with CSS variables
-- `contexts/ProjectContext.tsx` - Centralized state management for projects
-
-### Hooks
-- `hooks/useTaskManagement.ts` - Task CRUD operations with IndexedDB persistence
-
-### Services
-- `services/geminiService.ts` - Gemini AI integration for image generation, editing, vectorization, and code generation
-- `services/persistence.ts` - IndexedDB wrapper for local storage (history, tasks, project state)
+The application uses a modular component architecture including:
+-   Root components for lazy loading and view navigation.
+-   Dedicated components for each core feature (RepoAnalyzer, ArticleToInfographic, ImageEditor, DevStudio).
+-   Reusable UI components for navigation, history display, and infographic results.
+-   Modal components for user interactions (e.g., keyboard shortcuts).
 
 ### Data Flow
-1. User provides GitHub repo URL or article URL
-2. For repos: GitHub API fetches file tree, filtered for code files
-3. Content sent to Gemini AI for infographic generation
-4. Generated images displayed with download and fullscreen viewing options
-5. History persisted to IndexedDB for offline access
+The system processes user-provided content (GitHub repo URLs or article URLs), sends it to Gemini AI for processing (e.g., infographic generation, image editing), and displays the results. History and project states are persisted locally using IndexedDB.
 
 ### API Key Management
-- Gemini API key is configured via the `GEMINI_API_KEY` environment variable
-- The key is injected at build time through Vite config
+User-specific API keys for services like GitHub, Gemini, OpenAI, etc., can be managed via a dedicated settings modal and stored in browser localStorage. The system falls back to environment variables if user-provided keys are not available.
 
-### Keyboard Shortcuts
-- `Alt+1` - Home
-- `Alt+2` - GitFlow (Repo Analyzer)
-- `Alt+3` - SiteSketch (Article to Infographic)
-- `Alt+4` - Reality Engine (Style Transfer)
-- `Alt+5` - DevStudio (Code Explorer)
-- `Shift+?` - Show keyboard shortcuts help
-- `Ctrl+Enter` - Execute render in Reality Engine
+### Authentication
+A full user signup and authentication system is implemented, supporting email/password and social logins (Google, GitHub, X, Apple) via OpenID Connect. User sessions are managed with a PostgreSQL backend.
 
 ## External Dependencies
 
 ### Third-Party APIs
-- **Google Gemini AI** (`@google/genai`) - Core AI service for generating infographics, image editing, vectorization, and Q&A
-- **GitHub REST API** - Fetches repository file trees (tries `main` then `master` branches)
+-   **Google Gemini AI** (`@google/genai`): Core AI service for content generation, image manipulation, and code generation.
+-   **GitHub REST API**: Used for fetching repository file trees and related data.
 
 ### Database
-- **PostgreSQL** - Primary database, configured via `DATABASE_URL` environment variable
-- **Drizzle ORM** - Type-safe database queries with PostgreSQL dialect
-- **Drizzle Kit** - Database migration tooling (`npm run db:push`)
-- **IndexedDB** - Client-side persistence for history, tasks, and project state
+-   **PostgreSQL**: Primary database for user sessions and application data, managed with `DATABASE_URL`.
+-   **Drizzle ORM** with `Drizzle Kit`: For type-safe database queries and migrations.
+-   **IndexedDB**: Client-side storage for local persistence of history, tasks, and project states.
 
 ### Key NPM Packages
-- `react` / `react-dom` - UI framework
-- `d3` - Data visualization for force-directed graphs
-- `drizzle-orm` / `drizzle-zod` - Database ORM and schema validation
-- `pg` - PostgreSQL client
-- `zod` - Runtime type validation
-- `lucide-react` - Icon components
-- `tailwindcss` / `@tailwindcss/vite` - CSS framework with Vite integration
+-   `react`, `react-dom`: Frontend UI development.
+-   `d3`: For advanced data visualizations.
+-   `drizzle-orm`, `drizzle-zod`, `pg`: Database interaction and schema validation.
+-   `zod`: Runtime type validation.
+-   `lucide-react`: Icon library.
+-   `tailwindcss`, `@tailwindcss/vite`: CSS framework and integration.
+-   `recharts`: For data visualization charts.
 
 ### Environment Variables Required
-- `DATABASE_URL` - PostgreSQL connection string
-- `GEMINI_API_KEY` - Google Gemini API key for AI features
-
-## Deployment
-
-The app uses static deployment:
-- Build command: `npm run build`
-- Output directory: `dist`
-- Deployment target: Static hosting
+-   `DATABASE_URL`: PostgreSQL connection string.
+-   `GEMINI_API_KEY`: Google Gemini API key.
