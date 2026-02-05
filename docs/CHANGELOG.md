@@ -15,6 +15,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.7.0] - 2026-01-24
+
+### Added
+- **Branded Neon-Style Images Integration**
+  - Home Page Feature Cards: Branded icons for GitHub (cloud), SiteSketch (analytics), RealityEngine (creative palette), DevStudio (projects folder)
+  - Splash Page: Floating animated icons with float animation (security, cloud, analytics, creative, projects)
+  - Navigation Tabs: Small image icons replace Lucide icons for visual consistency
+  - PWA Manifest: Added branded icon-security.png to manifest icons array
+  - All images stored in `/public/images/` with descriptive naming convention
+
+### Changed
+- Feature card backgrounds now display branded images with hover effects
+- NavigationTabs component simplified by removing unused Lucide icon imports
+
+---
+
+## [2.6.0] - 2026-01-24
+
+### Added
+- **Resource Efficiency Optimizations**
+  - API Caching: `services/cache.ts` with TTL-based memory cache, request deduplication, and exponential backoff
+  - GitHub Service: 5-minute caching and concurrent request deduplication
+  - Animation Optimizations: All canvas animations FPS-capped (20-30 FPS) and pause when tab hidden via Page Visibility API
+
+### Changed
+- LoadingState log intervals: 800ms → 2.5s
+- useDataManager streaming intervals: 2s → 5s
+- Offline check intervals: 5s → 30s
+- Splash page particle count reduced: 300 → 200
+- All setInterval hooks now skip updates when `document.hidden` is true
+
+### Performance
+- Target: <5% CPU idle, minimized memory footprint
+
+---
+
 ## [2.5.0] - 2026-01-22
 
 ### Added
