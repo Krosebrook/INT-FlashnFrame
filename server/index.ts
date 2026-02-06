@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.NODE_ENV === "production" ? 5000 : 3001;
+const PORT = parseInt(process.env.PORT || "0") || (process.env.NODE_ENV === "production" ? 5000 : 3001);
 
 app.use(express.json());
 
@@ -151,12 +151,15 @@ async function startServer() {
     }
   });
 
-  if (process.env.NODE_ENV === "production") {
-    app.use(express.static(path.join(__dirname, "../dist")));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(__dirname, "../dist/index.html"));
-    });
-  }
+  const distPath = path.join(__dirname, "../dist");
+  app.use(express.static(distPath, { maxAge: '1h' }));
+  app.get("/{*splat}", (req, res) => {
+    if (req.path.startsWith("/api")) {
+      return res.status(404).json({ message: "Not found" });
+    }
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.join(distPath, "index.html"));
+  });
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Auth server running on port ${PORT}`);
