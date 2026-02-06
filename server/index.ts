@@ -160,6 +160,7 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Auth server running on port ${PORT}`);
+    console.log(`Node environment: ${process.env.NODE_ENV}`);
   });
 }
 

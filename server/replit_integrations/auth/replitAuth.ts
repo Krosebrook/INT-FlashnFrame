@@ -34,7 +34,7 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: false, // Changed for local development/proxy
       maxAge: sessionTtl,
     },
   });
