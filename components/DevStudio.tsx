@@ -9,6 +9,7 @@ import { DevStudioState, D3Node, ViewMode } from '../types';
 import { askNodeSpecificQuestion, performCodeReview, generateTestCases, generateDocumentation, analyzeGapsAndBottlenecks, CodeReviewResult, TestGenerationResult, DocumentationResult, GapAnalysisResult } from '../services/geminiService';
 import { Terminal, GitBranch, Cpu, MessageSquare, Zap, Code2, ArrowLeft, Sparkles, Bug, Search, FileCheck, TestTube, FileText, AlertTriangle, Copy, Loader2, Shield, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { useProjectContext } from '../contexts/ProjectContext';
+import { useRateLimitContext } from '../contexts/RateLimitContext';
 
 type ToolMode = 'chat' | 'review' | 'tests' | 'docs' | 'gaps';
 
@@ -37,6 +38,7 @@ const TOOL_MODES = [
 
 const DevStudio: React.FC<DevStudioProps> = ({ onNavigate }) => {
   const { currentProject: initialState } = useProjectContext();
+  const { handleApiError: handleGlobalRateLimit } = useRateLimitContext();
   const [selectedNode, setSelectedNode] = useState<D3Node | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [questionInput, setQuestionInput] = useState('');
@@ -92,8 +94,12 @@ const DevStudio: React.FC<DevStudioProps> = ({ onNavigate }) => {
     try {
         const answer = await askNodeSpecificQuestion(targetNodeLabel, promptText, initialState.fileTree);
         setChatHistory(prev => [...prev, { role: 'model', text: answer }]);
-    } catch (error) {
-        setChatHistory(prev => [...prev, { role: 'model', text: "Error processing your request." }]);
+    } catch (error: any) {
+        if (handleGlobalRateLimit(error)) {
+          setChatHistory(prev => [...prev, { role: 'model', text: "Rate limit reached. Please wait for the cooldown timer above before trying again." }]);
+        } else {
+          setChatHistory(prev => [...prev, { role: 'model', text: error.message || "Error processing your request." }]);
+        }
     } finally {
         setChatLoading(false);
     }
@@ -142,8 +148,10 @@ const DevStudio: React.FC<DevStudioProps> = ({ onNavigate }) => {
           setGapResults(gaps);
           break;
       }
-    } catch (error) {
-      console.error("Tool execution failed:", error);
+    } catch (error: any) {
+      if (!handleGlobalRateLimit(error)) {
+        console.error("Tool execution failed:", error);
+      }
     } finally {
       setToolLoading(false);
     }

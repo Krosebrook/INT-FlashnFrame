@@ -10,39 +10,16 @@ import { Link, Loader2, Download, Sparkles, AlertCircle, Palette, Globe, Externa
 import { LoadingState } from './LoadingState';
 import ImageViewer from './ImageViewer';
 import { useProjectContext } from '../contexts/ProjectContext';
+import { useRateLimitContext } from '../contexts/RateLimitContext';
+import { SKETCH_STYLES, LANGUAGES } from '../constants';
 
 type SiteSketchMode = 'single' | 'compare' | 'stats';
 
 interface ArticleToInfographicProps {}
 
-const SKETCH_STYLES = [
-    "Modern Editorial",
-    "Fun & Playful",
-    "Clean Minimalist",
-    "Dark Mode Tech",
-    "Custom"
-];
-
-const LANGUAGES = [
-  { label: "English (US)", value: "English" },
-  { label: "Arabic (Egypt)", value: "Arabic" },
-  { label: "German (Germany)", value: "German" },
-  { label: "Spanish (Mexico)", value: "Spanish" },
-  { label: "French (France)", value: "French" },
-  { label: "Hindi (India)", value: "Hindi" },
-  { label: "Indonesian (Indonesia)", value: "Indonesian" },
-  { label: "Italian (Italy)", value: "Italian" },
-  { label: "Japanese (Japan)", value: "Japanese" },
-  { label: "Korean (South Korea)", value: "Korean" },
-  { label: "Portuguese (Brazil)", value: "Portuguese" },
-  { label: "Russian (Russia)", value: "Russian" },
-  { label: "Ukrainian (Ukraine)", value: "Ukrainian" },
-  { label: "Vietnamese (Vietnam)", value: "Vietnamese" },
-  { label: "Chinese (China)", value: "Chinese" },
-];
-
 const ArticleToInfographic: React.FC<ArticleToInfographicProps> = () => {
   const { articleHistory: history, addArticleHistory: onAddToHistory } = useProjectContext();
+  const { handleApiError: handleGlobalRateLimit } = useRateLimitContext();
   const [urlInput, setUrlInput] = useState('');
   const [selectedStyle, setSelectedStyle] = useState(SKETCH_STYLES[0]);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].value);
@@ -101,19 +78,36 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = () => {
     setCompareUrls(updated);
   };
 
+  const isValidUrl = (url: string): boolean => {
+    try {
+      const parsed = new URL(url.trim());
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate based on mode
     if (mode === 'single' || mode === 'stats') {
       if (!urlInput.trim()) {
-        setError("Please provide a valid URL.");
+        setError("Please provide a URL.");
+        return;
+      }
+      if (!isValidUrl(urlInput)) {
+        setError("Please enter a valid URL starting with http:// or https://");
         return;
       }
     } else if (mode === 'compare') {
       const validUrls = compareUrls.filter(u => u.trim());
       if (validUrls.length < 2) {
         setError("Please provide at least 2 URLs to compare.");
+        return;
+      }
+      const invalidUrl = validUrls.find(u => !isValidUrl(u));
+      if (invalidUrl) {
+        setError(`Invalid URL: "${invalidUrl}". All URLs must start with http:// or https://`);
         return;
       }
     }
@@ -177,7 +171,11 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = () => {
         }
       }
     } catch (err: any) {
-      setError(err.message || "An unexpected error occurred.");
+      if (handleGlobalRateLimit(err)) {
+        setError('Rate limit reached. Please wait for the cooldown timer above.');
+      } else {
+        setError(err.message || "An unexpected error occurred.");
+      }
     } finally {
       setLoading(false);
       setLoadingStage('');

@@ -8,6 +8,11 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { editImageWithGemini, generateCodeFromImage, scanComponentLibrary, generateResponsiveVariants, generateDashboard } from '../services/geminiService';
 import { ViewMode } from '../types';
 import { Upload, Wand2, Loader2, Download, ImageIcon, Palette, Terminal, Sparkles, Code, Copy, Undo, Redo, LayoutGrid, Smartphone, LayoutDashboard, FileCode, FileText } from 'lucide-react';
+import { useRateLimitContext } from '../contexts/RateLimitContext';
+
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 type RealityMode = 'style' | 'code' | 'components' | 'responsive' | 'dashboard';
 
@@ -36,6 +41,7 @@ interface HistoryState {
 }
 
 const ImageEditor: React.FC<ImageEditorProps> = ({ initialState, onNavigate }) => {
+  const { handleApiError: handleGlobalRateLimit } = useRateLimitContext();
   const [mimeType, setMimeType] = useState<string>('');
   const [prompt, setPrompt] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -80,20 +86,34 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ initialState, onNavigate }) =
     }
   };
 
+  const [fileError, setFileError] = useState<string | null>(null);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        // Extract base64 payload from data URL string
-        const base64 = base64String.split(',')[1];
-        setHistory([{ imageData: base64, code: null }]);
-        setHistoryIndex(0);
-        setMimeType(file.type);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    setFileError(null);
+
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setFileError(`Unsupported file type "${file.type}". Please use JPEG, PNG, WebP, or GIF.`);
+      if (inputRef.current) inputRef.current.value = '';
+      return;
     }
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setFileError(`File is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum size is ${MAX_FILE_SIZE_MB}MB.`);
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      const base64 = base64String.split(',')[1];
+      setHistory([{ imageData: base64, code: null }]);
+      setHistoryIndex(0);
+      setMimeType(file.type);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleEdit = useCallback(async (e?: React.FormEvent) => {
@@ -136,10 +156,8 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ initialState, onNavigate }) =
           setDashboardResult(result);
       }
     } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || '';
-      
-      if (errorMsg.includes('rate limit') || errorMsg.includes('429') || errorMsg.includes('too many requests') || errorMsg.includes('quota')) {
-        alert('Rate limit reached. Please wait a moment before trying again.');
+      if (handleGlobalRateLimit(error)) {
+        alert('Rate limit reached. Please wait for the cooldown timer to finish.');
       } else if (error.message && error.message.includes("Requested entity was not found")) {
         alert('API configuration error. Please contact your system administrator.');
       } else {
@@ -201,11 +219,17 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ initialState, onNavigate }) =
                 </div>
                 <div>
                   <p className="text-slate-300 font-bold text-lg font-sans">Drop Blueprint Here</p>
-                  <p className="text-slate-500 text-xs mt-2 font-mono uppercase tracking-wider mb-4">PNG or JPG supported</p>
+                  <p className="text-slate-500 text-xs mt-2 font-mono uppercase tracking-wider mb-4">JPEG, PNG, WebP, or GIF (max {MAX_FILE_SIZE_MB}MB)</p>
                 </div>
               </div>
             )}
-             <input ref={inputRef} type="file" accept="image/png, image/jpeg" onChange={handleFileChange} className="hidden" />
+             <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleFileChange} className="hidden" />
+             {fileError && (
+               <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm font-mono flex items-center gap-2">
+                 <span className="shrink-0">⚠</span>
+                 <span>{fileError}</span>
+               </div>
+             )}
           </div>
 
           {/* Mode Switcher */}

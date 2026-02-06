@@ -11,8 +11,10 @@ import { AlertCircle, Loader2, Layers, Box, Download, Sparkles, Command, Palette
 import { LoadingState } from './LoadingState';
 import ImageViewer from './ImageViewer';
 import { useProjectContext } from '../contexts/ProjectContext';
+import { useRateLimitContext } from '../contexts/RateLimitContext';
 import { buildGraphFromFileTree } from '../utils/graphBuilder';
 import DependencyGraph from './DependencyGraph';
+import { FLOW_STYLES, LANGUAGES } from '../constants';
 
 type RepoTab = 'flow' | 'dependencies';
 
@@ -20,34 +22,9 @@ interface RepoAnalyzerProps {
   onNavigate: (mode: ViewMode, data?: any) => void;
 }
 
-const FLOW_STYLES = [
-    "Modern Data Flow",
-    "Hand-Drawn Blueprint",
-    "Corporate Minimal",
-    "Neon Cyberpunk",
-    "Custom"
-];
-
-const LANGUAGES = [
-  { label: "English (US)", value: "English" },
-  { label: "Arabic (Egypt)", value: "Arabic" },
-  { label: "German (Germany)", value: "German" },
-  { label: "Spanish (Mexico)", value: "Spanish" },
-  { label: "French (France)", value: "French" },
-  { label: "Hindi (India)", value: "Hindi" },
-  { label: "Indonesian (Indonesia)", value: "Indonesian" },
-  { label: "Italian (Italy)", value: "Italian" },
-  { label: "Japanese (Japan)", value: "Japanese" },
-  { label: "Korean (South Korea)", value: "Korean" },
-  { label: "Portuguese (Brazil)", value: "Portuguese" },
-  { label: "Russian (Russia)", value: "Russian" },
-  { label: "Ukrainian (Ukraine)", value: "Ukrainian" },
-  { label: "Vietnamese (Vietnam)", value: "Vietnamese" },
-  { label: "Chinese (China)", value: "Chinese" },
-];
-
 const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate }) => {
   const { repoHistory: history, addRepoHistory: onAddToHistory, setCurrentProject } = useProjectContext();
+  const { handleApiError: handleGlobalRateLimit } = useRateLimitContext();
   const [repoInput, setRepoInput] = useState('');
   const [selectedStyle, setSelectedStyle] = useState(FLOW_STYLES[0]);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].value);
@@ -71,14 +48,18 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate }) => {
   const [fullScreenImage, setFullScreenImage] = useState<{src: string, alt: string} | null>(null);
 
   const parseRepoInput = (input: string): { owner: string, repo: string } | null => {
-    const cleanInput = input.trim().replace(/\/$/, '');
+    let cleanInput = input.trim().replace(/\/$/, '');
     try {
       const url = new URL(cleanInput);
       if (url.hostname === 'github.com') {
         const parts = url.pathname.split('/').filter(Boolean);
-        if (parts.length >= 2) return { owner: parts[0], repo: parts[1] };
+        if (parts.length >= 2) {
+          const repo = parts[1].replace(/\.git$/, '');
+          return { owner: parts[0], repo };
+        }
       }
     } catch (e) { }
+    cleanInput = cleanInput.replace(/\.git$/, '');
     const parts = cleanInput.split('/');
     if (parts.length === 2 && parts[0] && parts[1]) return { owner: parts[0], repo: parts[1] };
     return null;
@@ -97,10 +78,8 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate }) => {
   };
 
   const handleApiError = (err: any) => {
-      const errorMsg = err.message?.toLowerCase() || '';
-      
-      if (errorMsg.includes('rate limit') || errorMsg.includes('429') || errorMsg.includes('too many requests') || errorMsg.includes('quota')) {
-          setError('Rate limit reached. Please wait a moment before trying again.');
+      if (handleGlobalRateLimit(err)) {
+          setError('Rate limit reached. Please wait for the cooldown timer above.');
           return;
       }
       
