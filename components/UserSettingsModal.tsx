@@ -74,14 +74,14 @@ const API_KEY_SECTIONS: ApiKeySection[] = [
       {
         key: 'awsAccessKey',
         label: 'AWS Access Key ID',
-        placeholder: 'AKIAIOSFODNN7EXAMPLE',
+        placeholder: 'Enter your AWS Access Key ID',
         icon: <Server className="w-5 h-5" />,
         helpUrl: 'https://console.aws.amazon.com/iam/home#/security_credentials',
       },
       {
         key: 'awsSecretKey',
         label: 'AWS Secret Access Key',
-        placeholder: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+        placeholder: 'Enter your AWS Secret Access Key',
         icon: <Server className="w-5 h-5" />,
       },
       {
