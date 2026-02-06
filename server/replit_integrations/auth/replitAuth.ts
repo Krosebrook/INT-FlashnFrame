@@ -34,7 +34,7 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: false, // Changed for local development/proxy
+      secure: true, // Reverting to true for replit.app environment
       maxAge: sessionTtl,
     },
   });
