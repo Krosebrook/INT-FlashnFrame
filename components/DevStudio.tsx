@@ -38,7 +38,7 @@ const TOOL_MODES = [
 
 const DevStudio: React.FC<DevStudioProps> = ({ onNavigate }) => {
   const { currentProject: initialState } = useProjectContext();
-  const { handleApiError: handleGlobalRateLimit } = useRateLimitContext();
+  const { handleApiError: handleGlobalRateLimit, checkBeforeCall, isRateLimited, remainingSeconds } = useRateLimitContext();
   const [selectedNode, setSelectedNode] = useState<D3Node | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [questionInput, setQuestionInput] = useState('');
@@ -85,6 +85,13 @@ const DevStudio: React.FC<DevStudioProps> = ({ onNavigate }) => {
 
   const executePrompt = async (promptText: string, nodeOverride?: D3Node | null) => {
     if (!initialState.fileTree) return;
+    if (checkBeforeCall()) {
+      setChatHistory(prev => [...prev, 
+        { role: 'user', text: promptText },
+        { role: 'model', text: `⏳ Rate limit active. Please wait ${remainingSeconds}s before trying again.` }
+      ]);
+      return;
+    }
     const node = nodeOverride !== undefined ? nodeOverride : selectedNode;
     const targetNodeLabel = node ? node.label : "the overall architecture";
 
@@ -121,6 +128,12 @@ const DevStudio: React.FC<DevStudioProps> = ({ onNavigate }) => {
 
   const runTool = async (mode: ToolMode) => {
     if (!initialState?.fileTree || !selectedNode) return;
+    if (checkBeforeCall()) {
+      setChatHistory(prev => [...prev, 
+        { role: 'model', text: `⏳ Rate limit active. Please wait ${remainingSeconds}s before trying again.` }
+      ]);
+      return;
+    }
     
     setToolLoading(true);
     setToolMode(mode);

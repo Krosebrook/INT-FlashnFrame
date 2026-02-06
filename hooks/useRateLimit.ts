@@ -81,18 +81,30 @@ export function useRateLimit(): UseRateLimitReturn {
 }
 
 export function parseRateLimitError(error: any): { isRateLimit: boolean; retryAfter: number; service: string } {
-  const errorMsg = error?.message?.toLowerCase() || error?.toString()?.toLowerCase() || '';
+  const errorMsg = error?.message || error?.toString?.() || '';
+  const lowerMsg = errorMsg.toLowerCase();
   
-  if (errorMsg.includes('rate limit') || errorMsg.includes('429') || errorMsg.includes('too many requests') || errorMsg.includes('quota')) {
+  const isNetworkError = lowerMsg.includes('failed to fetch') || lowerMsg.includes('networkerror') || lowerMsg.includes('net::err');
+  if (isNetworkError) {
+    return { isRateLimit: false, retryAfter: 0, service: '' };
+  }
+  
+  const isRateLimit = lowerMsg.includes('rate limit') || lowerMsg.includes('429') || 
+    lowerMsg.includes('too many requests') || lowerMsg.includes('quota') || 
+    lowerMsg.includes('resource exhausted');
+
+  if (isRateLimit) {
+    const waitMatch = errorMsg.match(/wait\s+(\d+)\s*s/i);
     const retryMatch = errorMsg.match(/retry.?after[:\s]*(\d+)/i);
-    const retryAfter = retryMatch ? parseInt(retryMatch[1], 10) : 60;
+    const retryAfter = waitMatch ? parseInt(waitMatch[1], 10) : 
+                       retryMatch ? parseInt(retryMatch[1], 10) : 60;
     
     let service = 'API';
-    if (errorMsg.includes('gemini') || errorMsg.includes('google')) {
+    if (lowerMsg.includes('gemini') || lowerMsg.includes('google')) {
       service = 'Gemini AI';
-    } else if (errorMsg.includes('github')) {
+    } else if (lowerMsg.includes('github')) {
       service = 'GitHub';
-    } else if (errorMsg.includes('openai')) {
+    } else if (lowerMsg.includes('openai')) {
       service = 'OpenAI';
     }
     

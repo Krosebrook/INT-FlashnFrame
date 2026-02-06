@@ -24,7 +24,7 @@ interface RepoAnalyzerProps {
 
 const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate }) => {
   const { repoHistory: history, addRepoHistory: onAddToHistory, setCurrentProject } = useProjectContext();
-  const { handleApiError: handleGlobalRateLimit } = useRateLimitContext();
+  const { handleApiError: handleGlobalRateLimit, checkBeforeCall, isRateLimited, remainingSeconds } = useRateLimitContext();
   const [repoInput, setRepoInput] = useState('');
   const [selectedStyle, setSelectedStyle] = useState(FLOW_STYLES[0]);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].value);
@@ -93,6 +93,10 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate }) => {
 
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (checkBeforeCall()) {
+      setError(`Rate limit active. Please wait ${remainingSeconds}s before trying again.`);
+      return;
+    }
     setError(null);
     setInfographicData(null);
     setInfographic3DData(null);
@@ -137,6 +141,10 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate }) => {
 
   const handleGenerate3D = async () => {
     if (!currentFileTree || !currentRepoName) return;
+    if (checkBeforeCall()) {
+      setError(`Rate limit active. Please wait ${remainingSeconds}s before trying again.`);
+      return;
+    }
     setGenerating3D(true);
     try {
       // Pass the same selected style to the 3D generator

@@ -19,7 +19,7 @@ interface ArticleToInfographicProps {}
 
 const ArticleToInfographic: React.FC<ArticleToInfographicProps> = () => {
   const { articleHistory: history, addArticleHistory: onAddToHistory } = useProjectContext();
-  const { handleApiError: handleGlobalRateLimit } = useRateLimitContext();
+  const { handleApiError: handleGlobalRateLimit, checkBeforeCall, isRateLimited, remainingSeconds } = useRateLimitContext();
   const [urlInput, setUrlInput] = useState('');
   const [selectedStyle, setSelectedStyle] = useState(SKETCH_STYLES[0]);
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0].value);
@@ -110,6 +110,11 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = () => {
         setError(`Invalid URL: "${invalidUrl}". All URLs must start with http:// or https://`);
         return;
       }
+    }
+    
+    if (checkBeforeCall()) {
+      setError(`Rate limit active. Please wait ${remainingSeconds}s before trying again.`);
+      return;
     }
     
     setLoading(true);

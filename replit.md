@@ -36,6 +36,14 @@ The application uses a modular component architecture including:
 ### Data Flow
 The system processes user-provided content (GitHub repo URLs or article URLs), sends it to Gemini AI for processing (e.g., infographic generation, image editing), and displays the results. History and project states are persisted locally using IndexedDB.
 
+### API Resilience & Caching
+-   **Smart Retry**: All Gemini API calls use exponential backoff (2 retries, 2s initial delay). Rate limit errors (429), permission (403), not-found (404), and safety errors skip retries and fail immediately.
+-   **Response Caching**: Text-based API results (code review, tests, docs, gap analysis) cached for 5 minutes. Image results cached for 10 minutes. Uses `apiCache` from `services/cache.ts`.
+-   **Request Deduplication**: Infographic generation and DevStudio tools use `deduplicatedFetch` to prevent duplicate in-flight requests.
+-   **Service-Level Rate Limit Tracking**: `geminiService.ts` tracks rate limits at the service level (`globalRateLimitUntil`), synced with the UI via `RateLimitContext`.
+-   **Pre-Flight Guards**: All 4 feature components check `checkBeforeCall()` before making API requests to prevent wasted calls during cooldown.
+-   **Graceful Degradation**: Rate limit banner shows countdown, cached results remain accessible, and network errors are distinguished from rate limits.
+
 ### API Key Management
 User-specific API keys for services like GitHub, Gemini, OpenAI, etc., can be managed via a dedicated settings modal and stored in browser localStorage. The system falls back to environment variables if user-provided keys are not available.
 

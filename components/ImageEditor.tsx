@@ -41,7 +41,7 @@ interface HistoryState {
 }
 
 const ImageEditor: React.FC<ImageEditorProps> = ({ initialState, onNavigate }) => {
-  const { handleApiError: handleGlobalRateLimit } = useRateLimitContext();
+  const { handleApiError: handleGlobalRateLimit, checkBeforeCall, isRateLimited, remainingSeconds } = useRateLimitContext();
   const [mimeType, setMimeType] = useState<string>('');
   const [prompt, setPrompt] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -120,8 +120,12 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ initialState, onNavigate }) =
     if (e) e.preventDefault();
     if (!currentState.imageData) return;
     
-    // Some modes don't require prompt
     if ((mode === 'style' || mode === 'code') && !prompt) return;
+
+    if (checkBeforeCall()) {
+      setFileError(`Rate limit active. Please wait ${remainingSeconds}s before trying again.`);
+      return;
+    }
 
     setProcessing(true);
     
@@ -166,7 +170,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ initialState, onNavigate }) =
     } finally {
       setProcessing(false);
     }
-  }, [currentState.imageData, mimeType, prompt, mode, history, historyIndex]);
+  }, [currentState.imageData, mimeType, prompt, mode, history, historyIndex, checkBeforeCall, remainingSeconds]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
