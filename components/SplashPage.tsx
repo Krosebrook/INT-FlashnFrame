@@ -10,6 +10,9 @@ const SplashPage: React.FC<SplashPageProps> = ({ onComplete }) => {
   const [phase, setPhase] = useState<'loading' | 'ready' | 'exit'>('loading');
   const phaseRef = useRef<'loading' | 'ready' | 'exit'>('loading');
   const [progress, setProgress] = useState(0);
+  const prefersReducedMotion = useRef(
+    typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  );
 
   const setPhaseState = (newPhase: 'loading' | 'ready' | 'exit') => {
     setPhase(newPhase);
@@ -17,6 +20,12 @@ const SplashPage: React.FC<SplashPageProps> = ({ onComplete }) => {
   };
 
   useEffect(() => {
+    const skipSplash = localStorage.getItem('fnf-skip-splash') === 'true';
+    if (skipSplash || prefersReducedMotion.current) {
+      onComplete();
+      return;
+    }
+
     const progressInterval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 100) {
@@ -35,7 +44,7 @@ const SplashPage: React.FC<SplashPageProps> = ({ onComplete }) => {
       clearInterval(progressInterval);
       clearTimeout(readyTimer);
     };
-  }, []);
+  }, [onComplete]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -303,6 +312,22 @@ const SplashPage: React.FC<SplashPageProps> = ({ onComplete }) => {
         )}
 
       </div>
+
+      <button
+        onClick={() => {
+          localStorage.setItem('fnf-skip-splash', 'true');
+          handleEnter();
+        }}
+        className="absolute top-6 right-6 z-20 px-3 py-1.5 text-xs rounded-lg transition-colors"
+        style={{
+          color: 'rgba(255, 255, 255, 0.4)',
+          background: 'rgba(255, 255, 255, 0.05)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+        }}
+        aria-label="Skip splash screen and don't show again"
+      >
+        Skip & Remember
+      </button>
 
       <div 
         className="absolute bottom-8 left-0 right-0 text-center text-sm z-10"

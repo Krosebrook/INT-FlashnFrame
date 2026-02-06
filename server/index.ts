@@ -1,22 +1,90 @@
 import express from "express";
+import crypto from "crypto";
+import cookieParser from "cookie-parser";
 import { setupAuth, registerAuthRoutes, authStorage } from "./replit_integrations/auth";
 import bcrypt from "bcryptjs";
 import path from "path";
 import { fileURLToPath } from "url";
+import helmet from "helmet";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const isProduction = process.env.NODE_ENV === "production" || process.env.REPLIT_DEPLOYMENT === "1";
 const app = express();
-const PORT = parseInt(process.env.PORT || "0") || (process.env.NODE_ENV === "production" ? 5000 : 3001);
+const PORT = parseInt(process.env.PORT || "0") || (isProduction ? 5000 : 3001);
 
-app.use(express.json());
+app.set("trust proxy", 1);
+
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
+app.use(cors({
+  origin: isProduction
+    ? [/\.replit\.app$/, /\.replit\.dev$/]
+    : true,
+  credentials: true,
+}));
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { message: "Too many attempts. Please try again in 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/signup", authLimiter);
+app.use("/api/", apiLimiter);
+
+app.use(cookieParser());
+app.use(express.json({ limit: "10mb" }));
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+
+function csrfProtection(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") {
+    return next();
+  }
+  const cookieToken = (req.cookies as Record<string, string>)?.["csrf-token"];
+  const headerToken = req.headers["x-csrf-token"] as string;
+  if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+    return res.status(403).json({ message: "Invalid CSRF token" });
+  }
+  next();
+}
 
 async function startServer() {
   await setupAuth(app);
   registerAuthRoutes(app);
+
+  app.get("/api/csrf-token", (_req, res) => {
+    const token = crypto.randomBytes(32).toString("hex");
+    res.cookie("csrf-token", token, {
+      httpOnly: false,
+      secure: isProduction,
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+    res.json({ csrfToken: token });
+  });
+
+  app.use("/api/auth/signup", csrfProtection);
+  app.use("/api/auth/login", csrfProtection);
+  app.use("/api/auth/magic-link", csrfProtection);
+  app.use("/api/auth/phone", csrfProtection);
   
   app.post("/api/auth/magic-link", async (req, res) => {
     try {
@@ -151,19 +219,36 @@ async function startServer() {
     }
   });
 
-  const distPath = path.join(__dirname, "../dist");
-  app.use(express.static(distPath, { maxAge: '1h' }));
-  app.get("/{*splat}", (req, res) => {
-    if (req.path.startsWith("/api")) {
-      return res.status(404).json({ message: "Not found" });
-    }
-    res.setHeader('Cache-Control', 'no-cache');
-    res.sendFile(path.join(distPath, "index.html"));
+  app.get("/api/health", (_req, res) => {
+    res.json({
+      status: "ok",
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+      environment: isProduction ? "production" : "development",
+    });
   });
 
+  if (isProduction) {
+    const distPath = path.join(__dirname, "../dist");
+    app.use(express.static(distPath, {
+      maxAge: '1h',
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache');
+        }
+      }
+    }));
+    app.get("/*", (req, res) => {
+      if (req.path.startsWith("/api")) {
+        return res.status(404).json({ message: "Not found" });
+      }
+      res.setHeader('Cache-Control', 'no-cache');
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
+
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Auth server running on port ${PORT}`);
-    console.log(`Node environment: ${process.env.NODE_ENV}`);
+    console.log(`Server running on port ${PORT} [${isProduction ? "production" : "development"}]`);
   });
 }
 

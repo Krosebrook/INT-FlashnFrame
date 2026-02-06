@@ -1,9 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Mail, Phone, Key, Shield, Building2, Sparkles, Eye, EyeOff, Check, AlertCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 type AuthTab = 'social' | 'email' | 'phone' | 'magic' | 'sso';
 type AuthMode = 'login' | 'signup';
+
+async function fetchCsrfToken(): Promise<string> {
+  const res = await fetch('/api/csrf-token', { credentials: 'include' });
+  const data = await res.json();
+  return data.csrfToken;
+}
+
+function authPost(url: string, body: object, csrfToken: string) {
+  return fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken,
+    },
+    body: JSON.stringify(body),
+    credentials: 'include',
+  });
+}
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -33,6 +51,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [step, setStep] = useState<'input' | 'verify'>('input');
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [ssoProvider, setSsoProvider] = useState('');
+  const csrfTokenRef = useRef<string>('');
+  const [csrfReady, setCsrfReady] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && !csrfTokenRef.current) {
+      setCsrfReady(false);
+      fetchCsrfToken()
+        .then(token => {
+          csrfTokenRef.current = token;
+          setCsrfReady(true);
+        })
+        .catch(() => {
+          setError('Could not initialize security token. Please close and reopen this dialog.');
+        });
+    } else if (csrfTokenRef.current) {
+      setCsrfReady(true);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -81,12 +117,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     }
 
     try {
-      const response = await fetch(`/api/auth/${mode}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-        credentials: 'include'
-      });
+      const response = await authPost(`/api/auth/${mode}`, { email, password }, csrfTokenRef.current);
       
       const data = await response.json();
       
@@ -109,11 +140,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/magic-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
+      const response = await authPost('/api/auth/magic-link', { email }, csrfTokenRef.current);
       
       if (response.ok) {
         setStep('verify');
@@ -134,11 +161,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/phone', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, code: step === 'verify' ? verificationCode : undefined }),
-      });
+      const response = await authPost('/api/auth/phone', { phone, code: step === 'verify' ? verificationCode : undefined }, csrfTokenRef.current);
       
       if (response.ok) {
         if (step === 'input') {
@@ -307,10 +330,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
                 <button
                   type="submit"
-                  disabled={isLoading || !captchaVerified}
+                  disabled={isLoading || !captchaVerified || !csrfReady}
                   className="w-full py-3 bg-violet-500 text-white rounded-lg font-medium hover:bg-violet-600 transition-all disabled:opacity-50"
                 >
-                  {isLoading ? 'Processing...' : mode === 'login' ? 'Sign In' : 'Create Account'}
+                  {isLoading ? 'Processing...' : !csrfReady ? 'Initializing...' : mode === 'login' ? 'Sign In' : 'Create Account'}
                 </button>
               </>
             ) : (
@@ -357,10 +380,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 </div>
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || !csrfReady}
                   className="w-full py-3 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-lg font-medium hover:opacity-90 transition-all disabled:opacity-50"
                 >
-                  {isLoading ? 'Sending...' : 'Send Magic Link'}
+                  {isLoading ? 'Sending...' : !csrfReady ? 'Initializing...' : 'Send Magic Link'}
                 </button>
               </>
             ) : (
@@ -407,10 +430,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 </div>
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || !csrfReady}
                   className="w-full py-3 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition-all disabled:opacity-50"
                 >
-                  {isLoading ? 'Sending...' : 'Send Verification Code'}
+                  {isLoading ? 'Sending...' : !csrfReady ? 'Initializing...' : 'Send Verification Code'}
                 </button>
               </>
             ) : (
@@ -432,7 +455,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 </div>
                 <button
                   type="submit"
-                  disabled={isLoading || verificationCode.length !== 6}
+                  disabled={isLoading || verificationCode.length !== 6 || !csrfReady}
                   className="w-full py-3 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition-all disabled:opacity-50"
                 >
                   {isLoading ? 'Verifying...' : 'Verify Code'}

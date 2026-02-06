@@ -17,12 +17,15 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ currentView, onN
   if (currentView === ViewMode.HOME) return null;
 
   return (
-    <div className="flex justify-center mb-8 md:mb-10 animate-in fade-in slide-in-from-top-4 sticky top-24 z-40">
-      <div className="glass-panel p-1 md:p-1.5 rounded-full flex relative shadow-2xl backdrop-blur-md">
+    <nav aria-label="Main navigation" role="navigation" className="flex justify-center mb-8 md:mb-10 animate-in fade-in slide-in-from-top-4 sticky top-24 z-40">
+      <div className="glass-panel p-1 md:p-1.5 rounded-full flex relative shadow-2xl backdrop-blur-md" role="tablist" aria-label="Feature tabs">
         <button
           onClick={() => onNavigate(ViewMode.HOME)}
           className="relative flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-full font-medium text-sm transition-all duration-300 font-mono text-slate-500 hover:text-slate-300 hover:bg-white/5"
           title="Home (Alt+1)"
+          aria-label="Navigate to Home"
+          role="tab"
+          aria-selected={currentView === ViewMode.HOME}
         >
           <HomeIcon className="w-4 h-4" />
         </button>
@@ -35,6 +38,9 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ currentView, onN
               : 'text-slate-500 hover:text-slate-300'
           }`}
           title="GitFlow (Alt+2)"
+          aria-label="GitFlow - GitHub repository analyzer"
+          role="tab"
+          aria-selected={currentView === ViewMode.REPO_ANALYZER}
         >
           <img src="/images/icon-cloud.png" alt="" className="w-5 h-5 object-contain" />
           <span className="hidden sm:inline">GitFlow</span>
@@ -47,6 +53,9 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ currentView, onN
               : 'text-slate-500 hover:text-slate-300'
           }`}
           title="SiteSketch (Alt+3)"
+          aria-label="SiteSketch - Article to infographic converter"
+          role="tab"
+          aria-selected={currentView === ViewMode.ARTICLE_INFOGRAPHIC}
         >
           <img src="/images/icon-analytics.png" alt="" className="w-5 h-5 object-contain" />
           <span className="hidden sm:inline">SiteSketch</span>
@@ -59,6 +68,9 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ currentView, onN
               : 'text-slate-500 hover:text-slate-300'
           }`}
           title="RealityEngine (Alt+4)"
+          aria-label="RealityEngine - AI image style transfer"
+          role="tab"
+          aria-selected={currentView === ViewMode.IMAGE_EDITOR}
         >
           <img src="/images/icon-creative.png" alt="" className="w-5 h-5 object-contain" />
           <span className="hidden sm:inline">RealityEngine</span>
@@ -71,11 +83,14 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ currentView, onN
               : 'text-slate-500 hover:text-slate-300'
           }`}
           title="DevStudio (Alt+5)"
+          aria-label="DevStudio - Interactive code exploration"
+          role="tab"
+          aria-selected={currentView === ViewMode.DEV_STUDIO}
         >
           <img src="/images/icon-projects.png" alt="" className="w-5 h-5 object-contain" />
           <span className="hidden sm:inline">DevStudio</span>
         </button>
       </div>
-    </div>
+    </nav>
   );
 };
