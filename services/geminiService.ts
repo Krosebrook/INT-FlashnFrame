@@ -42,8 +42,21 @@ function setGeminiRateLimit(seconds: number = 60) {
 }
 
 function isRateLimitError(error: any): boolean {
+  const status = error?.status || error?.httpStatus;
+  if (status === 429) return true;
+  const code = (error?.code || '').toString().toLowerCase();
+  if (code === '429' || code === 'resource_exhausted') return true;
   const msg = (error?.message || error?.toString?.() || '').toLowerCase();
-  return msg.includes('429') || msg.includes('rate limit') || msg.includes('too many requests') || msg.includes('quota') || msg.includes('resource exhausted');
+  if (msg.includes('429') || msg.includes('too many requests')) return true;
+  if (msg.includes('resource exhausted') || msg.includes('resource_exhausted')) return true;
+  if (msg.includes('rate limit') && !msg.includes('404') && !msg.includes('not found')) return true;
+  return false;
+}
+
+function isQuotaError(error: any): boolean {
+  const msg = (error?.message || error?.toString?.() || '').toLowerCase();
+  return (msg.includes('quota') && !msg.includes('429') && !msg.includes('too many requests')) ||
+         (msg.includes('billing') || msg.includes('payment required') || msg.includes('402'));
 }
 
 async function withSmartRetry<T>(
@@ -64,6 +77,9 @@ async function withSmartRetry<T>(
         const retryMatch = (error.message || '').match(/retry.?after[:\s]*(\d+)/i);
         const retryAfter = retryMatch ? parseInt(retryMatch[1], 10) : 60;
         setGeminiRateLimit(retryAfter);
+        throw error;
+      }
+      if (isQuotaError(error)) {
         throw error;
       }
       if (attempt === maxRetries) throw error;
@@ -171,7 +187,7 @@ export async function generateInfographic(
 
   return deduplicatedFetch(cacheKey, () => withSmartRetry(async () => {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
+      model: 'gemini-3-pro-image',
       contents: {
         parts: [{ text: prompt }],
       },
@@ -193,21 +209,25 @@ export async function generateInfographic(
   })).catch((error: any) => {
     console.error("Gemini infographic generation failed:", error);
     
-    const errorMsg = error.message || error.toString();
+    const errorMsg = (error.message || error.toString()).toLowerCase();
     let userMessage = "Failed to generate visual. Please try again.";
 
-    if (errorMsg.includes("Rate Limit Active")) {
+    if (error.message?.includes("Rate Limit Active")) {
         throw error;
     } else if (errorMsg.includes("403") || errorMsg.includes("permission denied")) {
-        userMessage = "Access Denied: API key permissions issue. Please contact your system administrator.";
+        userMessage = "Access Denied: API key permissions issue. Please check your Gemini API key in Settings.";
     } else if (errorMsg.includes("404") || errorMsg.includes("not found")) {
-        userMessage = "Model Not Found: The required AI model is not available. Please contact your system administrator.";
-    } else if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("rate limit")) {
+        userMessage = "Model Not Found: The AI model is not available. Your API key may not have access to this model.";
+    } else if (errorMsg.includes("429") || errorMsg.includes("too many requests") || errorMsg.includes("rate limit")) {
         userMessage = "Rate Limit Exceeded: Please wait a moment before trying again.";
-    } else if (errorMsg.includes("SAFETY")) {
+    } else if (errorMsg.includes("quota") || errorMsg.includes("resource exhausted")) {
+        userMessage = "API Quota Exceeded: Your Gemini API key has reached its usage limit. Please check your billing at ai.google.dev.";
+    } else if (errorMsg.includes("safety")) {
         userMessage = "Safety Block: The content generation was blocked by safety filters. Please try a different repository or style.";
-    } else if (errorMsg.includes("500")) {
+    } else if (errorMsg.includes("500") || errorMsg.includes("internal")) {
         userMessage = "Service Error: AI service is temporarily unavailable. Please try again later.";
+    } else if (errorMsg.includes("api key") || errorMsg.includes("invalid key") || errorMsg.includes("api_key")) {
+        userMessage = "Invalid API Key: Please check your Gemini API key in Settings.";
     }
 
     throw new Error(userMessage);
@@ -272,7 +292,7 @@ LAYOUT REQUIREMENTS:
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
+      model: 'gemini-3-pro-image',
       contents: {
         parts: [{ text: prompt }],
       },
@@ -980,7 +1000,7 @@ export async function generateArticleInfographic(
         Keep the output concise and focused purely on what should be ON the infographic. Ensure all content is in ${language}.`;
 
         const analysisResponse = await ai.models.generateContent({
-            model: 'gemini-3-pro-image-preview',
+            model: 'gemini-3-pro-image',
             contents: analysisPrompt,
             config: {
                 tools: [{ googleSearch: {} }],
@@ -1048,7 +1068,7 @@ export async function generateArticleInfographic(
 
     const imageData = await withSmartRetry(async () => {
         const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-image-preview',
+            model: 'gemini-3-pro-image',
             contents: {
                 parts: [{ text: imagePrompt }],
             },
@@ -1114,7 +1134,7 @@ export async function generateComparisonInfographic(
     Keep the output concise and focused purely on what should be ON the infographic. Ensure all content is in ${language}.`;
 
     const analysisResponse = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
+      model: 'gemini-3-pro-image',
       contents: analysisPrompt,
       config: {
         tools: [{ googleSearch: {} }],
@@ -1177,7 +1197,7 @@ export async function generateComparisonInfographic(
 
   const imageData = await withSmartRetry(async () => {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
+      model: 'gemini-3-pro-image',
       contents: {
         parts: [{ text: imagePrompt }],
       },
@@ -1319,7 +1339,7 @@ export async function extractKeyStats(
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
+      model: 'gemini-3-pro-image',
       contents: {
         parts: [{ text: imagePrompt }],
       },
@@ -1409,7 +1429,7 @@ export async function editImageWithGemini(base64Data: string, mimeType: string, 
   const ai = getAiClient();
   return withSmartRetry(async () => {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
+      model: 'gemini-3-pro-image',
       contents: {
         parts: [
           {
