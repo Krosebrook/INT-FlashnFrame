@@ -102,16 +102,17 @@ const smartSampleData = (data: any[]): any[] => {
  * Uses Gemini Flash for low-latency instruction following.
  */
 export const parsePrompt = async (prompt: string, semanticModel?: SemanticModel): Promise<WidgetConfig> => {
-  // 1. Check for API Key availability
-  if (!process.env.API_KEY) {
-    console.warn("[OmniGen] No API_KEY found. Using heuristic fallback.");
+  let client;
+  try {
+    client = await ensureAiClient();
+  } catch {
+    console.warn("[OmniGen] No API key available. Using heuristic fallback.");
     return new Promise((resolve) => {
       setTimeout(() => resolve(heuristicParse(prompt)), 800);
     });
   }
 
   try {
-    const client = await ensureAiClient();
     
     const availableMetrics = semanticModel?.metrics.map(m => m.name).join(', ') || 'Sales, Users, Conversion';
     const availableDimensions = semanticModel?.dimensions.map(d => d.name).join(', ') || 'Date, Region, Category';
@@ -180,8 +181,10 @@ export const parsePrompt = async (prompt: string, semanticModel?: SemanticModel)
  * Uses Gemini Flash for analysis and Search Grounding for market context.
  */
 export const generateAnalysis = async (title: string, data: any[]): Promise<AnalysisResult> => {
-  // Fallback for demo/offline
-  if (!process.env.API_KEY) {
+  let client;
+  try {
+    client = await ensureAiClient();
+  } catch {
     return new Promise((resolve) => {
       setTimeout(() => resolve({
         summary: `Analysis of ${title} indicates a stable trend with minor fluctuations. The data suggests consistent performance across the selected timeframe.`,
@@ -198,7 +201,6 @@ export const generateAnalysis = async (title: string, data: any[]): Promise<Anal
   }
 
   try {
-    const client = await ensureAiClient();
     
     // Aggregation Logic for large datasets
     const aggregatedData = smartSampleData(data);

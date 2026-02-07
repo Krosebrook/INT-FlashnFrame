@@ -35,7 +35,7 @@ async function fetchServerKey(): Promise<string | null> {
 }
 
 const getAiClient = () => {
-  const key = userProvidedGeminiKey || serverProvidedGeminiKey || process.env.API_KEY;
+  const key = userProvidedGeminiKey || serverProvidedGeminiKey;
   if (!key) {
     throw new Error('No Gemini API key configured. Please add your API key in Settings.');
   }
@@ -43,7 +43,7 @@ const getAiClient = () => {
 };
 
 export async function ensureAiClient(): Promise<GoogleGenAI> {
-  let key = userProvidedGeminiKey || serverProvidedGeminiKey || process.env.API_KEY;
+  let key = userProvidedGeminiKey || serverProvidedGeminiKey;
   if (!key) {
     key = await fetchServerKey();
   }

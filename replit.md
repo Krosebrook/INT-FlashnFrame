@@ -110,6 +110,13 @@ A full user signup and authentication system is implemented:
 -   `REPL_ID`: Replit application identifier (auto-set by Replit).
 
 ## Recent Changes (Feb 2026)
+-   Fixed Gemini model names to use `-preview` suffix (gemini-3-pro-image-preview, gemini-3-pro-preview).
+-   Added intelligent model fallback: IMAGE_MODELS and TEXT_MODELS arrays with automatic retry on 404/model-not-available errors.
+-   **Security**: Moved Gemini API key from client-side bundle to server-side `/api/ai/key` endpoint. Vite no longer injects API keys.
+-   Added React ErrorBoundary component wrapping AppContent for crash recovery UI.
+-   Added ToastProvider notification system for user feedback (success/error/warning/info).
+-   Fixed `omniAiService.ts` to use `ensureAiClient()` instead of checking `process.env.API_KEY` (which is empty in browser).
+-   Consolidated workflows: removed separate Auth Server workflow, combined into single "Start application" workflow.
 -   Fixed cookie `secure` flag to be environment-aware instead of hardcoded `true`.
 -   Fixed Vite proxy target from `0.0.0.0:3001` to `localhost:3001`.
 -   Fixed Express 5 SPA catch-all route from `/{*splat}` to `/*`.
