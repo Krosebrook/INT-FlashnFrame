@@ -228,6 +228,13 @@ async function startServer() {
     });
   });
 
+  app.get("/", (_req, res, next) => {
+    if (!isProduction) return next();
+    res.setHeader('Cache-Control', 'no-cache');
+    const distPath = path.join(__dirname, "../dist");
+    res.sendFile(path.join(distPath, "index.html"));
+  });
+
   if (isProduction) {
     const distPath = path.join(__dirname, "../dist");
     app.use(express.static(distPath, {
@@ -238,7 +245,7 @@ async function startServer() {
         }
       }
     }));
-    app.get("*", (req, res) => {
+    app.get("/{*splat}", (req, res) => {
       if (req.path.startsWith("/api")) {
         return res.status(404).json({ message: "Not found" });
       }
