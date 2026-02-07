@@ -228,6 +228,14 @@ async function startServer() {
     });
   });
 
+  app.head("/api/ping", (_req, res) => {
+    res.status(200).end();
+  });
+
+  app.get("/api/ping", (_req, res) => {
+    res.status(200).json({ pong: true });
+  });
+
   app.get("/", (_req, res, next) => {
     if (!isProduction) return next();
     res.setHeader('Cache-Control', 'no-cache');
