@@ -9,6 +9,7 @@ import { RepoFileTree, Citation, Task, DependencyInfo } from '../types';
 import { apiCache, createCacheKey, deduplicatedFetch } from './cache';
 
 let userProvidedGeminiKey: string | null = null;
+let serverProvidedGeminiKey: string | null = null;
 
 export function setUserGeminiKey(key: string | null) {
   userProvidedGeminiKey = key;
@@ -18,13 +19,68 @@ export function getUserGeminiKey(): string | null {
   return userProvidedGeminiKey;
 }
 
+async function fetchServerKey(): Promise<string | null> {
+  if (serverProvidedGeminiKey) return serverProvidedGeminiKey;
+  try {
+    const res = await fetch('/api/ai/key', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.key) {
+        serverProvidedGeminiKey = data.key;
+        return data.key;
+      }
+    }
+  } catch { }
+  return null;
+}
+
 const getAiClient = () => {
-  const key = userProvidedGeminiKey || process.env.API_KEY;
+  const key = userProvidedGeminiKey || serverProvidedGeminiKey || process.env.API_KEY;
   if (!key) {
     throw new Error('No Gemini API key configured. Please add your API key in Settings.');
   }
   return new GoogleGenAI({ apiKey: key });
 };
+
+export async function ensureAiClient(): Promise<GoogleGenAI> {
+  let key = userProvidedGeminiKey || serverProvidedGeminiKey || process.env.API_KEY;
+  if (!key) {
+    key = await fetchServerKey();
+  }
+  if (!key) {
+    throw new Error('No Gemini API key configured. Please add your API key in Settings.');
+  }
+  return new GoogleGenAI({ apiKey: key });
+}
+
+export const IMAGE_MODELS = ['gemini-3-pro-image-preview', 'gemini-2.5-flash-preview-image'];
+export const TEXT_MODELS = ['gemini-3-pro-preview', 'gemini-2.5-pro', 'gemini-2.5-flash'];
+
+function isModelNotAvailable(error: any): boolean {
+  const msg = (error?.message || error?.toString?.() || '').toLowerCase();
+  return msg.includes('404') || msg.includes('not found') || msg.includes('not available') ||
+         msg.includes('model') && (msg.includes('does not exist') || msg.includes('invalid'));
+}
+
+export async function withModelFallback<T>(
+  models: string[],
+  callFn: (model: string) => Promise<T>
+): Promise<T> {
+  let lastError: any;
+  for (const model of models) {
+    try {
+      return await callFn(model);
+    } catch (error: any) {
+      lastError = error;
+      if (isModelNotAvailable(error)) {
+        console.warn(`Model ${model} not available, trying fallback...`);
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError || new Error('All models unavailable');
+}
 
 let globalRateLimitUntil = 0;
 
@@ -119,8 +175,6 @@ export async function generateInfographic(
   is3D: boolean = false,
   language: string = "English"
 ): Promise<string | null> {
-  const ai = getAiClient();
-  // Summarize architecture for the image prompt
   const limitedTree = fileTree.slice(0, 150).map(f => f.path).join(', ');
   
   let styleGuidelines = "";
@@ -186,26 +240,29 @@ export async function generateInfographic(
   if (cached) return cached;
 
   return deduplicatedFetch(cacheKey, () => withSmartRetry(async () => {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image',
-      contents: {
-        parts: [{ text: prompt }],
-      },
-      config: {
-        responseModalities: [Modality.IMAGE],
-      },
-    });
+    const client = await ensureAiClient();
+    return withModelFallback(IMAGE_MODELS, async (model) => {
+      const response = await client.models.generateContent({
+        model,
+        contents: {
+          parts: [{ text: prompt }],
+        },
+        config: {
+          responseModalities: [Modality.IMAGE],
+        },
+      });
 
-    const parts = response.candidates?.[0]?.content?.parts;
-    if (parts) {
-      for (const part of parts) {
-        if (part.inlineData && part.inlineData.data) {
-          apiCache.set(cacheKey, part.inlineData.data, IMAGE_CACHE_TTL);
-          return part.inlineData.data;
+      const parts = response.candidates?.[0]?.content?.parts;
+      if (parts) {
+        for (const part of parts) {
+          if (part.inlineData && part.inlineData.data) {
+            apiCache.set(cacheKey, part.inlineData.data, IMAGE_CACHE_TTL);
+            return part.inlineData.data;
+          }
         }
       }
-    }
-    return null;
+      return null;
+    });
   })).catch((error: any) => {
     console.error("Gemini infographic generation failed:", error);
     
@@ -247,8 +304,6 @@ export async function generateDependencyGraph(
   dependencies: DependencyInfo[],
   ecosystem: string
 ): Promise<string | null> {
-  const ai = getAiClient();
-  
   // Group dependencies by type
   const prodDeps = dependencies.filter(d => d.type === 'production');
   const devDeps = dependencies.filter(d => d.type === 'development');
@@ -291,25 +346,28 @@ LAYOUT REQUIREMENTS:
 7. If security alerts exist, highlight those packages with warning indicators`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image',
-      contents: {
-        parts: [{ text: prompt }],
-      },
-      config: {
-        responseModalities: [Modality.IMAGE],
-      },
-    });
+    const client = await ensureAiClient();
+    return await withModelFallback(IMAGE_MODELS, async (model) => {
+      const response = await client.models.generateContent({
+        model,
+        contents: {
+          parts: [{ text: prompt }],
+        },
+        config: {
+          responseModalities: [Modality.IMAGE],
+        },
+      });
 
-    const parts = response.candidates?.[0]?.content?.parts;
-    if (parts) {
-      for (const part of parts) {
-        if (part.inlineData && part.inlineData.data) {
-          return part.inlineData.data;
+      const parts = response.candidates?.[0]?.content?.parts;
+      if (parts) {
+        for (const part of parts) {
+          if (part.inlineData && part.inlineData.data) {
+            return part.inlineData.data;
+          }
         }
       }
-    }
-    return null;
+      return null;
+    });
   } catch (error: any) {
     console.error("Gemini dependency graph generation failed:", error);
     throw new Error("Failed to generate dependency visualization. Please try again.");
@@ -324,8 +382,6 @@ export async function analyzeDependencies(
   dependencies: DependencyInfo[],
   ecosystem: string
 ): Promise<{ analyzed: DependencyInfo[]; summary: string }> {
-  const ai = getAiClient();
-  
   const depsString = dependencies.map(d => `${d.name}@${d.version} (${d.type})`).join('\n');
   
   const prompt = `Analyze these ${ecosystem} dependencies for potential security concerns:
@@ -353,9 +409,12 @@ Consider:
 Return ONLY valid JSON, no markdown.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: { parts: [{ text: prompt }] }
+    const client = await ensureAiClient();
+    const response = await withModelFallback(TEXT_MODELS, async (model) => {
+      return await client.models.generateContent({
+        model,
+        contents: { parts: [{ text: prompt }] }
+      });
     });
 
     const text = response.text?.trim() || '{}';
@@ -406,7 +465,6 @@ Return ONLY valid JSON, no markdown.`;
  * @returns Promise resolving to SVG code string.
  */
 export async function vectorizeInfographic(base64Image: string, promptContext: string): Promise<string | null> {
-  const ai = getAiClient();
   const prompt = `Analyze the attached infographic image. It is a technical diagram for: "${promptContext}".
   
   TASK: Recreate this infographic as a clean, high-quality, professional SVG file.
@@ -420,28 +478,30 @@ export async function vectorizeInfographic(base64Image: string, promptContext: s
   6. Output ONLY valid SVG code. No explanations, no markdown blocks.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: 'image/png',
-              data: base64Image
-            }
-          },
-          { text: prompt }
-        ]
-      },
-      config: {
-        thinkingConfig: { thinkingBudget: 4000 }
-      }
-    });
+    const client = await ensureAiClient();
+    return await withModelFallback(TEXT_MODELS, async (model) => {
+      const response = await client.models.generateContent({
+        model,
+        contents: {
+          parts: [
+            {
+              inlineData: {
+                mimeType: 'image/png',
+                data: base64Image
+              }
+            },
+            { text: prompt }
+          ]
+        },
+        config: {
+          thinkingConfig: { thinkingBudget: 4000 }
+        }
+      });
 
-    let svgText = response.text || "";
-    // Clean up any potential markdown wrapper
-    svgText = svgText.replace(/^```svg\n/, '').replace(/^```xml\n/, '').replace(/^```\n/, '').replace(/\n```$/, '');
-    return svgText.trim();
+      let svgText = response.text || "";
+      svgText = svgText.replace(/^```svg\n/, '').replace(/^```xml\n/, '').replace(/^```\n/, '').replace(/\n```$/, '');
+      return svgText.trim();
+    });
   } catch (error) {
     console.error("Gemini vectorization failed:", error);
     throw error;
@@ -452,8 +512,6 @@ export async function vectorizeInfographic(base64Image: string, promptContext: s
  * Answers questions about the repo architecture based on the visual diagram.
  */
 export async function askRepoQuestion(question: string, infographicBase64: string, fileTree: RepoFileTree[]): Promise<string> {
-  const ai = getAiClient();
-  // Provide context about the file structure to supplement the image
   const limitedTree = fileTree.slice(0, 300).map(f => f.path).join('\n');
   
   const prompt = `You are a senior software architect reviewing a project.
@@ -469,22 +527,25 @@ export async function askRepoQuestion(question: string, infographicBase64: strin
   Keep answers concise, technical, and helpful.`;
 
   try {
-    const response = await ai.models.generateContent({
-       model: 'gemini-3-pro-preview',
-       contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: 'image/png',
-              data: infographicBase64
-            }
-          },
-          { text: prompt }
-        ]
-      }
-    });
+    const client = await ensureAiClient();
+    return await withModelFallback(TEXT_MODELS, async (model) => {
+      const response = await client.models.generateContent({
+        model,
+        contents: {
+          parts: [
+            {
+              inlineData: {
+                mimeType: 'image/png',
+                data: infographicBase64
+              }
+            },
+            { text: prompt }
+          ]
+        }
+      });
 
-    return response.text || "I couldn't generate an answer at this time.";
+      return response.text || "I couldn't generate an answer at this time.";
+    });
   } catch (error) {
     console.error("Gemini Q&A failed:", error);
     throw error;
@@ -508,7 +569,6 @@ export async function askNodeSpecificQuestion(
   fileContent?: string,
   persona: string = "Senior Software Architect"
 ): Promise<string> {
-  const ai = getAiClient();
   const limitedTree = fileTree.slice(0, 300).map(f => f.path).join('\n');
   
   let contentContext = "";
@@ -543,19 +603,22 @@ export async function askNodeSpecificQuestion(
   Keep the response aligned with your persona: ${persona}.`;
 
   try {
-    const response = await ai.models.generateContent({
-       model: 'gemini-3-pro-preview',
-       contents: {
-        parts: [
-          { text: prompt }
-        ]
-      },
-      config: {
-          systemInstruction: systemInstruction
-      }
-    });
+    const client = await ensureAiClient();
+    return await withModelFallback(TEXT_MODELS, async (model) => {
+      const response = await client.models.generateContent({
+        model,
+        contents: {
+          parts: [
+            { text: prompt }
+          ]
+        },
+        config: {
+            systemInstruction: systemInstruction
+        }
+      });
 
-    return response.text || "I couldn't generate an answer at this time.";
+      return response.text || "I couldn't generate an answer at this time.";
+    });
   } catch (error) {
     console.error("Gemini Node Q&A failed:", error);
     throw error;
@@ -587,7 +650,6 @@ export async function performCodeReview(
   fileTree: RepoFileTree[],
   fileContent?: string
 ): Promise<CodeReviewResult> {
-  const ai = getAiClient();
   const limitedTree = fileTree.slice(0, 200).map(f => f.path).join('\n');
 
   const prompt = `You are a Senior Code Reviewer conducting a comprehensive code review.
@@ -627,29 +689,32 @@ Return ONLY the JSON, no markdown.`;
   if (cached) return cached;
 
   return deduplicatedFetch(cacheKey, () => withSmartRetry(async () => {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: { parts: [{ text: prompt }] }
+    const client = await ensureAiClient();
+    return withModelFallback(TEXT_MODELS, async (model) => {
+      const response = await client.models.generateContent({
+        model,
+        contents: { parts: [{ text: prompt }] }
+      });
+
+      let text = response.text || "{}";
+      text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
+
+      try {
+        const result = JSON.parse(text) as CodeReviewResult;
+        apiCache.set(cacheKey, result, CACHE_TTL);
+        return result;
+      } catch {
+        const fallback = {
+          summary: text,
+          overallScore: 0,
+          issues: [],
+          strengths: [],
+          recommendations: []
+        };
+        apiCache.set(cacheKey, fallback, CACHE_TTL);
+        return fallback;
+      }
     });
-
-    let text = response.text || "{}";
-    text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
-
-    try {
-      const result = JSON.parse(text) as CodeReviewResult;
-      apiCache.set(cacheKey, result, CACHE_TTL);
-      return result;
-    } catch {
-      const fallback = {
-        summary: text,
-        overallScore: 0,
-        issues: [],
-        strengths: [],
-        recommendations: []
-      };
-      apiCache.set(cacheKey, fallback, CACHE_TTL);
-      return fallback;
-    }
   })).catch((e) => {
     console.error("Code review failed", e);
     throw e;
@@ -680,7 +745,6 @@ export async function generateTestCases(
   fileTree: RepoFileTree[],
   fileContent?: string
 ): Promise<TestGenerationResult> {
-  const ai = getAiClient();
   const limitedTree = fileTree.slice(0, 150).map(f => f.path).join('\n');
 
   const prompt = `You are a QA Engineer and Test Automation Expert.
@@ -722,29 +786,32 @@ Return ONLY the JSON, no markdown.`;
   if (cached) return cached;
 
   return deduplicatedFetch(cacheKey, () => withSmartRetry(async () => {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: { parts: [{ text: prompt }] }
+    const client = await ensureAiClient();
+    return withModelFallback(TEXT_MODELS, async (model) => {
+      const response = await client.models.generateContent({
+        model,
+        contents: { parts: [{ text: prompt }] }
+      });
+
+      let text = response.text || "{}";
+      text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
+
+      try {
+        const result = JSON.parse(text) as TestGenerationResult;
+        apiCache.set(cacheKey, result, CACHE_TTL);
+        return result;
+      } catch {
+        const fallback = {
+          framework: "Unknown",
+          setup: "",
+          testCases: [],
+          edgeCases: [],
+          coverageNotes: text
+        };
+        apiCache.set(cacheKey, fallback, CACHE_TTL);
+        return fallback;
+      }
     });
-
-    let text = response.text || "{}";
-    text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
-
-    try {
-      const result = JSON.parse(text) as TestGenerationResult;
-      apiCache.set(cacheKey, result, CACHE_TTL);
-      return result;
-    } catch {
-      const fallback = {
-        framework: "Unknown",
-        setup: "",
-        testCases: [],
-        edgeCases: [],
-        coverageNotes: text
-      };
-      apiCache.set(cacheKey, fallback, CACHE_TTL);
-      return fallback;
-    }
   })).catch((e) => {
     console.error("Test generation failed", e);
     throw e;
@@ -771,7 +838,6 @@ export async function generateDocumentation(
   fileTree: RepoFileTree[],
   fileContent?: string
 ): Promise<DocumentationResult> {
-  const ai = getAiClient();
 
   const prompt = `You are a Technical Writer creating comprehensive documentation.
 
@@ -812,28 +878,31 @@ Return ONLY the JSON, no markdown.`;
   if (cached) return cached;
 
   return deduplicatedFetch(cacheKey, () => withSmartRetry(async () => {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: { parts: [{ text: prompt }] }
+    const client = await ensureAiClient();
+    return withModelFallback(TEXT_MODELS, async (model) => {
+      const response = await client.models.generateContent({
+        model,
+        contents: { parts: [{ text: prompt }] }
+      });
+
+      let text = response.text || "{}";
+      text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
+
+      try {
+        const result = JSON.parse(text) as DocumentationResult;
+        apiCache.set(cacheKey, result, CACHE_TTL);
+        return result;
+      } catch {
+        const fallback = {
+          moduleDoc: text,
+          functions: [],
+          usageExamples: [],
+          notes: ""
+        };
+        apiCache.set(cacheKey, fallback, CACHE_TTL);
+        return fallback;
+      }
     });
-
-    let text = response.text || "{}";
-    text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
-
-    try {
-      const result = JSON.parse(text) as DocumentationResult;
-      apiCache.set(cacheKey, result, CACHE_TTL);
-      return result;
-    } catch {
-      const fallback = {
-        moduleDoc: text,
-        functions: [],
-        usageExamples: [],
-        notes: ""
-      };
-      apiCache.set(cacheKey, fallback, CACHE_TTL);
-      return fallback;
-    }
   })).catch((e) => {
     console.error("Documentation generation failed", e);
     throw e;
@@ -872,7 +941,6 @@ export async function analyzeGapsAndBottlenecks(
   fileTree: RepoFileTree[],
   fileContent?: string
 ): Promise<GapAnalysisResult> {
-  const ai = getAiClient();
   const limitedTree = fileTree.slice(0, 200).map(f => f.path).join('\n');
 
   const prompt = `You are a Principal Engineer with expertise in identifying architectural gaps and potential issues.
@@ -940,29 +1008,32 @@ Return ONLY the JSON, no markdown.`;
   if (cached) return cached;
 
   return deduplicatedFetch(cacheKey, () => withSmartRetry(async () => {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: { parts: [{ text: prompt }] }
+    const client = await ensureAiClient();
+    return withModelFallback(TEXT_MODELS, async (model) => {
+      const response = await client.models.generateContent({
+        model,
+        contents: { parts: [{ text: prompt }] }
+      });
+
+      let text = response.text || "{}";
+      text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
+
+      try {
+        const result = JSON.parse(text) as GapAnalysisResult;
+        apiCache.set(cacheKey, result, CACHE_TTL);
+        return result;
+      } catch {
+        const fallback: GapAnalysisResult = {
+          gaps: [],
+          bottlenecks: [],
+          unknowns: [],
+          overallRisk: 'medium',
+          summary: text
+        };
+        apiCache.set(cacheKey, fallback, CACHE_TTL);
+        return fallback;
+      }
     });
-
-    let text = response.text || "{}";
-    text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
-
-    try {
-      const result = JSON.parse(text) as GapAnalysisResult;
-      apiCache.set(cacheKey, result, CACHE_TTL);
-      return result;
-    } catch {
-      const fallback: GapAnalysisResult = {
-        gaps: [],
-        bottlenecks: [],
-        unknowns: [],
-        overallRisk: 'medium',
-        summary: text
-      };
-      apiCache.set(cacheKey, fallback, CACHE_TTL);
-      return fallback;
-    }
   })).catch((e) => {
     console.error("Gap analysis failed", e);
     throw e;
@@ -978,7 +1049,6 @@ export async function generateArticleInfographic(
   onProgress?: (stage: string) => void,
   language: string = "English"
 ): Promise<InfographicResult> {
-    const ai = getAiClient();
     if (onProgress) onProgress("RESEARCHING & ANALYZING CONTENT...");
     
     let structuralSummary = "";
@@ -999,12 +1069,15 @@ export async function generateArticleInfographic(
         
         Keep the output concise and focused purely on what should be ON the infographic. Ensure all content is in ${language}.`;
 
-        const analysisResponse = await ai.models.generateContent({
-            model: 'gemini-3-pro-image',
-            contents: analysisPrompt,
-            config: {
-                tools: [{ googleSearch: {} }],
-            }
+        const client = await ensureAiClient();
+        const analysisResponse = await withModelFallback(TEXT_MODELS, async (model) => {
+            return await client.models.generateContent({
+                model,
+                contents: analysisPrompt,
+                config: {
+                    tools: [{ googleSearch: {} }],
+                }
+            });
         });
         structuralSummary = analysisResponse.text || "";
 
@@ -1067,25 +1140,28 @@ export async function generateArticleInfographic(
     `;
 
     const imageData = await withSmartRetry(async () => {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-image',
-            contents: {
-                parts: [{ text: imagePrompt }],
-            },
-            config: {
-                responseModalities: [Modality.IMAGE],
-            },
-        });
+        const client = await ensureAiClient();
+        return withModelFallback(IMAGE_MODELS, async (model) => {
+            const response = await client.models.generateContent({
+                model,
+                contents: {
+                    parts: [{ text: imagePrompt }],
+                },
+                config: {
+                    responseModalities: [Modality.IMAGE],
+                },
+            });
 
-        const parts = response.candidates?.[0]?.content?.parts;
-        if (parts) {
-            for (const part of parts) {
-                if (part.inlineData && part.inlineData.data) {
-                    return part.inlineData.data;
+            const parts = response.candidates?.[0]?.content?.parts;
+            if (parts) {
+                for (const part of parts) {
+                    if (part.inlineData && part.inlineData.data) {
+                        return part.inlineData.data;
+                    }
                 }
             }
-        }
-        return null;
+            return null;
+        });
     });
     return { imageData, citations };
 }
@@ -1100,7 +1176,6 @@ export async function generateComparisonInfographic(
   onProgress?: (stage: string) => void,
   language: string = "English"
 ): Promise<InfographicResult> {
-  const ai = getAiClient();
   if (onProgress) onProgress("ANALYZING MULTIPLE SOURCES...");
   
   let comparisonSummary = "";
@@ -1133,12 +1208,15 @@ export async function generateComparisonInfographic(
     
     Keep the output concise and focused purely on what should be ON the infographic. Ensure all content is in ${language}.`;
 
-    const analysisResponse = await ai.models.generateContent({
-      model: 'gemini-3-pro-image',
-      contents: analysisPrompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-      }
+    const client = await ensureAiClient();
+    const analysisResponse = await withModelFallback(TEXT_MODELS, async (model) => {
+      return await client.models.generateContent({
+        model,
+        contents: analysisPrompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+        }
+      });
     });
     comparisonSummary = analysisResponse.text || "";
 
@@ -1196,25 +1274,28 @@ export async function generateComparisonInfographic(
   `;
 
   const imageData = await withSmartRetry(async () => {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image',
-      contents: {
-        parts: [{ text: imagePrompt }],
-      },
-      config: {
-        responseModalities: [Modality.IMAGE],
-      },
-    });
+    const client = await ensureAiClient();
+    return withModelFallback(IMAGE_MODELS, async (model) => {
+      const response = await client.models.generateContent({
+        model,
+        contents: {
+          parts: [{ text: imagePrompt }],
+        },
+        config: {
+          responseModalities: [Modality.IMAGE],
+        },
+      });
 
-    const parts = response.candidates?.[0]?.content?.parts;
-    if (parts) {
-      for (const part of parts) {
-        if (part.inlineData && part.inlineData.data) {
-          return part.inlineData.data;
+      const parts = response.candidates?.[0]?.content?.parts;
+      if (parts) {
+        for (const part of parts) {
+          if (part.inlineData && part.inlineData.data) {
+            return part.inlineData.data;
+          }
         }
       }
-    }
-    return null;
+      return null;
+    });
   });
   return { imageData, citations };
 }
@@ -1233,7 +1314,6 @@ export async function extractKeyStats(
   citations: Citation[];
   stats: { stat: string; value: string; context: string }[];
 }> {
-  const ai = getAiClient();
   if (onProgress) onProgress("SCANNING FOR KEY STATISTICS...");
   
   let statsData: { stat: string; value: string; context: string }[] = [];
@@ -1264,12 +1344,15 @@ export async function extractKeyStats(
     Include at minimum 3 statistics, maximum 8. Prioritize the most impactful numbers.
     Return ONLY valid JSON, no markdown.`;
 
-    const analysisResponse = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: analysisPrompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-      }
+    const client = await ensureAiClient();
+    const analysisResponse = await withModelFallback(TEXT_MODELS, async (model) => {
+      return await client.models.generateContent({
+        model,
+        contents: analysisPrompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+        }
+      });
     });
     
     const responseText = analysisResponse.text || "{}";
@@ -1338,27 +1421,30 @@ export async function extractKeyStats(
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image',
-      contents: {
-        parts: [{ text: imagePrompt }],
-      },
-      config: {
-        responseModalities: [Modality.IMAGE],
-      },
-    });
+    const client = await ensureAiClient();
+    return await withModelFallback(IMAGE_MODELS, async (model) => {
+      const response = await client.models.generateContent({
+        model,
+        contents: {
+          parts: [{ text: imagePrompt }],
+        },
+        config: {
+          responseModalities: [Modality.IMAGE],
+        },
+      });
 
-    let imageData = null;
-    const parts = response.candidates?.[0]?.content?.parts;
-    if (parts) {
-      for (const part of parts) {
-        if (part.inlineData && part.inlineData.data) {
-          imageData = part.inlineData.data;
-          break;
+      let imageData = null;
+      const parts = response.candidates?.[0]?.content?.parts;
+      if (parts) {
+        for (const part of parts) {
+          if (part.inlineData && part.inlineData.data) {
+            imageData = part.inlineData.data;
+            break;
+          }
         }
       }
-    }
-    return { imageData, citations, stats: statsData };
+      return { imageData, citations, stats: statsData };
+    });
   } catch (error) {
     console.error("Stats infographic generation failed:", error);
     throw error;
@@ -1369,7 +1455,6 @@ export async function extractKeyStats(
  * Suggests tasks for the project based on repo structure.
  */
 export async function suggestProjectTasks(repoName: string, fileTree: RepoFileTree[]): Promise<Task[]> {
-  const ai = getAiClient();
   const limitedTree = fileTree.slice(0, 300).map(f => f.path).join('\n');
 
   const prompt = `You are a Technical Project Manager.
@@ -1387,24 +1472,27 @@ export async function suggestProjectTasks(repoName: string, fileTree: RepoFileTr
   Do not include markdown formatting, just the JSON array.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: { parts: [{ text: prompt }] },
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              title: { type: Type.STRING },
-              priority: { type: Type.STRING, enum: ["high", "medium", "low"] },
-              dueDate: { type: Type.STRING }
-            },
-            required: ["title", "priority", "dueDate"]
+    const client = await ensureAiClient();
+    const response = await withModelFallback(TEXT_MODELS, async (model) => {
+      return await client.models.generateContent({
+        model,
+        contents: { parts: [{ text: prompt }] },
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                priority: { type: Type.STRING, enum: ["high", "medium", "low"] },
+                dueDate: { type: Type.STRING }
+              },
+              required: ["title", "priority", "dueDate"]
+            }
           }
         }
-      }
+      });
     });
 
     const tasks = JSON.parse(response.text || "[]");
@@ -1426,37 +1514,39 @@ export async function suggestProjectTasks(repoName: string, fileTree: RepoFileTr
  * Uses Generative AI to apply style transfer or edits to an image.
  */
 export async function editImageWithGemini(base64Data: string, mimeType: string, prompt: string): Promise<string | null> {
-  const ai = getAiClient();
   return withSmartRetry(async () => {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image',
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              data: base64Data,
-              mimeType: mimeType,
+    const client = await ensureAiClient();
+    return withModelFallback(IMAGE_MODELS, async (model) => {
+      const response = await client.models.generateContent({
+        model,
+        contents: {
+          parts: [
+            {
+              inlineData: {
+                data: base64Data,
+                mimeType: mimeType,
+              },
             },
-          },
-          {
-            text: prompt,
-          },
-        ],
-      },
-      config: {
-        responseModalities: [Modality.IMAGE],
-      },
-    });
+            {
+              text: prompt,
+            },
+          ],
+        },
+        config: {
+          responseModalities: [Modality.IMAGE],
+        },
+      });
 
-    const parts = response.candidates?.[0]?.content?.parts;
-    if (parts) {
-      for (const part of parts) {
-        if (part.inlineData && part.inlineData.data) {
-          return part.inlineData.data;
+      const parts = response.candidates?.[0]?.content?.parts;
+      if (parts) {
+        for (const part of parts) {
+          if (part.inlineData && part.inlineData.data) {
+            return part.inlineData.data;
+          }
         }
       }
-    }
-    return null;
+      return null;
+    });
   });
 }
 
@@ -1464,7 +1554,6 @@ export async function editImageWithGemini(base64Data: string, mimeType: string, 
  * Converts a UI wireframe image into React/Tailwind code.
  */
 export async function generateCodeFromImage(base64Image: string, prompt: string): Promise<string | null> {
-   const ai = getAiClient();
    const fullPrompt = `
    You are an expert Frontend Developer specializing in React and Tailwind CSS.
    
@@ -1480,19 +1569,22 @@ export async function generateCodeFromImage(base64Image: string, prompt: string)
    `;
 
    return withSmartRetry(async () => {
-     const response = await ai.models.generateContent({
-       model: 'gemini-3-pro-preview',
-       contents: {
-         parts: [
-           { inlineData: { mimeType: 'image/png', data: base64Image } },
-           { text: fullPrompt }
-         ]
-       }
+     const client = await ensureAiClient();
+     return withModelFallback(TEXT_MODELS, async (model) => {
+       const response = await client.models.generateContent({
+         model,
+         contents: {
+           parts: [
+             { inlineData: { mimeType: 'image/png', data: base64Image } },
+             { text: fullPrompt }
+           ]
+         }
+       });
+       
+       let code = response.text || "";
+       code = code.replace(/^```tsx?\n/, '').replace(/^```\n/, '').replace(/\n```$/, '');
+       return code;
      });
-     
-     let code = response.text || "";
-     code = code.replace(/^```tsx?\n/, '').replace(/^```\n/, '').replace(/\n```$/, '');
-     return code;
    });
 }
 
@@ -1518,7 +1610,6 @@ export interface ComponentLibraryResult {
  * Scans a UI screenshot and extracts reusable UI component patterns.
  */
 export async function scanComponentLibrary(base64Image: string): Promise<ComponentLibraryResult> {
-  const ai = getAiClient();
   const prompt = `You are an expert UI/UX Engineer and React specialist.
 
 Analyze the attached UI screenshot and identify ALL reusable UI components/patterns visible.
@@ -1557,28 +1648,31 @@ Return as JSON in this exact format:
 Return ONLY the JSON, no markdown formatting.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: {
-        parts: [
-          { inlineData: { mimeType: 'image/png', data: base64Image } },
-          { text: prompt }
-        ]
+    const client = await ensureAiClient();
+    return await withModelFallback(TEXT_MODELS, async (model) => {
+      const response = await client.models.generateContent({
+        model,
+        contents: {
+          parts: [
+            { inlineData: { mimeType: 'image/png', data: base64Image } },
+            { text: prompt }
+          ]
+        }
+      });
+      
+      let text = response.text || "{}";
+      text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
+      
+      try {
+        return JSON.parse(text) as ComponentLibraryResult;
+      } catch {
+        return {
+          components: [],
+          summary: text,
+          designTokens: { colors: [], typography: [], spacing: [] }
+        };
       }
     });
-    
-    let text = response.text || "{}";
-    text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
-    
-    try {
-      return JSON.parse(text) as ComponentLibraryResult;
-    } catch {
-      return {
-        components: [],
-        summary: text,
-        designTokens: { colors: [], typography: [], spacing: [] }
-      };
-    }
   } catch (e) {
     console.error("Component library scan failed", e);
     throw e;
@@ -1602,7 +1696,6 @@ export interface ResponsiveResult {
  * Generates responsive variants (mobile/tablet/desktop) from a UI screenshot.
  */
 export async function generateResponsiveVariants(base64Image: string, componentName?: string): Promise<ResponsiveResult> {
-  const ai = getAiClient();
   const prompt = `You are an expert Frontend Developer specializing in responsive web design.
 
 Analyze the attached UI screenshot${componentName ? ` (Component: "${componentName}")` : ''}.
@@ -1646,28 +1739,31 @@ Return as JSON in this exact format:
 Return ONLY the JSON, no markdown formatting.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: {
-        parts: [
-          { inlineData: { mimeType: 'image/png', data: base64Image } },
-          { text: prompt }
-        ]
+    const client = await ensureAiClient();
+    return await withModelFallback(TEXT_MODELS, async (model) => {
+      const response = await client.models.generateContent({
+        model,
+        contents: {
+          parts: [
+            { inlineData: { mimeType: 'image/png', data: base64Image } },
+            { text: prompt }
+          ]
+        }
+      });
+      
+      let text = response.text || "{}";
+      text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
+      
+      try {
+        return JSON.parse(text) as ResponsiveResult;
+      } catch {
+        return {
+          variants: [],
+          sharedStyles: "",
+          responsiveNotes: text
+        };
       }
     });
-    
-    let text = response.text || "{}";
-    text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
-    
-    try {
-      return JSON.parse(text) as ResponsiveResult;
-    } catch {
-      return {
-        variants: [],
-        sharedStyles: "",
-        responsiveNotes: text
-      };
-    }
   } catch (e) {
     console.error("Responsive variant generation failed", e);
     throw e;
@@ -1694,7 +1790,6 @@ export interface DashboardResult {
  * Generates a complete dashboard project from a UI screenshot.
  */
 export async function generateDashboard(base64Image: string, requirements?: string): Promise<DashboardResult> {
-  const ai = getAiClient();
   const prompt = `You are a Senior Full-Stack Developer creating a complete dashboard project.
 
 Analyze the attached UI screenshot and generate a COMPLETE dashboard implementation.
@@ -1754,31 +1849,34 @@ Generate at least 5-8 files for a complete project structure.
 Return ONLY the JSON, no markdown formatting.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: {
-        parts: [
-          { inlineData: { mimeType: 'image/png', data: base64Image } },
-          { text: prompt }
-        ]
+    const client = await ensureAiClient();
+    return await withModelFallback(TEXT_MODELS, async (model) => {
+      const response = await client.models.generateContent({
+        model,
+        contents: {
+          parts: [
+            { inlineData: { mimeType: 'image/png', data: base64Image } },
+            { text: prompt }
+          ]
+        }
+      });
+      
+      let text = response.text || "{}";
+      text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
+      
+      try {
+        return JSON.parse(text) as DashboardResult;
+      } catch {
+        return {
+          name: "Dashboard",
+          description: "Generated dashboard",
+          files: [],
+          documentation: text,
+          features: [],
+          dependencies: []
+        };
       }
     });
-    
-    let text = response.text || "{}";
-    text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
-    
-    try {
-      return JSON.parse(text) as DashboardResult;
-    } catch {
-      return {
-        name: "Dashboard",
-        description: "Generated dashboard",
-        files: [],
-        documentation: text,
-        features: [],
-        dependencies: []
-      };
-    }
   } catch (e) {
     console.error("Dashboard generation failed", e);
     throw e;

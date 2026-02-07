@@ -1,6 +1,7 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
 import { VizType, WidgetConfig, SemanticModel, AnalysisResult } from '../types';
+import { ensureAiClient, withModelFallback, TEXT_MODELS } from './geminiService';
 
 // Fallback heuristic logic for when API key is missing or offline
 const heuristicParse = (prompt: string): WidgetConfig => {
@@ -110,51 +111,53 @@ export const parsePrompt = async (prompt: string, semanticModel?: SemanticModel)
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const client = await ensureAiClient();
     
     const availableMetrics = semanticModel?.metrics.map(m => m.name).join(', ') || 'Sales, Users, Conversion';
     const availableDimensions = semanticModel?.dimensions.map(d => d.name).join(', ') || 'Date, Region, Category';
     
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `
-        You are an expert data visualization architect.
-        User Request: "${prompt}"
-        
-        Available Data Fields:
-        - Metrics: ${availableMetrics}
-        - Dimensions: ${availableDimensions}
-        
-        Task: Generate a JSON configuration for a dashboard widget that best visualizes this request.
-        
-        Rules:
-        - Select the most appropriate 'type' from: ${Object.values(VizType).join(', ')}.
-        - Use 'scatter' for correlations, 'heatmap' for density/matrix, 'treemap' for hierarchical composition.
-        - 'w' (width) should be between 3 and 12. 
-        - 'h' (height) should be between 1 and 4.
-        - KPI cards should be small (3x1). Complex charts should be larger (6x3 or 6x4).
-        - 'id' should be unique (use a random string suffix).
-        - 'x' and 'y' should be 0 (the grid layout handles placement).
-      `,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            id: { type: Type.STRING },
-            type: { 
-              type: Type.STRING, 
-              enum: Object.values(VizType) 
+    const response = await withModelFallback(TEXT_MODELS, async (model) => {
+      return await client.models.generateContent({
+        model,
+        contents: `
+          You are an expert data visualization architect.
+          User Request: "${prompt}"
+          
+          Available Data Fields:
+          - Metrics: ${availableMetrics}
+          - Dimensions: ${availableDimensions}
+          
+          Task: Generate a JSON configuration for a dashboard widget that best visualizes this request.
+          
+          Rules:
+          - Select the most appropriate 'type' from: ${Object.values(VizType).join(', ')}.
+          - Use 'scatter' for correlations, 'heatmap' for density/matrix, 'treemap' for hierarchical composition.
+          - 'w' (width) should be between 3 and 12. 
+          - 'h' (height) should be between 1 and 4.
+          - KPI cards should be small (3x1). Complex charts should be larger (6x3 or 6x4).
+          - 'id' should be unique (use a random string suffix).
+          - 'x' and 'y' should be 0 (the grid layout handles placement).
+        `,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              id: { type: Type.STRING },
+              type: { 
+                type: Type.STRING, 
+                enum: Object.values(VizType) 
+              },
+              title: { type: Type.STRING },
+              w: { type: Type.INTEGER },
+              h: { type: Type.INTEGER },
+              x: { type: Type.INTEGER },
+              y: { type: Type.INTEGER }
             },
-            title: { type: Type.STRING },
-            w: { type: Type.INTEGER },
-            h: { type: Type.INTEGER },
-            x: { type: Type.INTEGER },
-            y: { type: Type.INTEGER }
-          },
-          required: ["id", "type", "title", "w", "h", "x", "y"]
+            required: ["id", "type", "title", "w", "h", "x", "y"]
+          }
         }
-      }
+      });
     });
 
     const text = response.text;
@@ -195,7 +198,7 @@ export const generateAnalysis = async (title: string, data: any[]): Promise<Anal
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const client = await ensureAiClient();
     
     // Aggregation Logic for large datasets
     const aggregatedData = smartSampleData(data);
@@ -203,38 +206,42 @@ export const generateAnalysis = async (title: string, data: any[]): Promise<Anal
 
     // Parallel execution: Internal Analysis (JSON) + External Context (Search)
     const [internalResponse, externalResponse] = await Promise.all([
-        ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `
-              Role: Senior Business Analyst.
-              Task: Analyze the following dataset for a chart titled "${title}".
-              Data (Aggregated Sample): ${dataSample}
-              
-              Provide:
-              1. An executive summary (max 2 sentences).
-              2. Key drivers/factors (max 3 bullet points).
-              3. Strategic recommendations (max 2).
-              4. Overall sentiment.
-            `,
-            config: {
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                  summary: { type: Type.STRING },
-                  drivers: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  sentiment: { type: Type.STRING, enum: ["positive", "negative", "neutral"] }
+        withModelFallback(TEXT_MODELS, async (model) => {
+            return await client.models.generateContent({
+                model,
+                contents: `
+                  Role: Senior Business Analyst.
+                  Task: Analyze the following dataset for a chart titled "${title}".
+                  Data (Aggregated Sample): ${dataSample}
+                  
+                  Provide:
+                  1. An executive summary (max 2 sentences).
+                  2. Key drivers/factors (max 3 bullet points).
+                  3. Strategic recommendations (max 2).
+                  4. Overall sentiment.
+                `,
+                config: {
+                  responseMimeType: "application/json",
+                  responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                      summary: { type: Type.STRING },
+                      drivers: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      sentiment: { type: Type.STRING, enum: ["positive", "negative", "neutral"] }
+                    }
+                  }
                 }
-              }
-            }
+            });
         }),
-        ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Briefly summarize the latest market trends, industry benchmarks, or news related to the business topic: "${title}". Focus on high-level business implications. Keep it under 50 words.`,
-            config: {
-                tools: [{googleSearch: {}}]
-            }
+        withModelFallback(TEXT_MODELS, async (model) => {
+            return await client.models.generateContent({
+                model,
+                contents: `Briefly summarize the latest market trends, industry benchmarks, or news related to the business topic: "${title}". Focus on high-level business implications. Keep it under 50 words.`,
+                config: {
+                    tools: [{googleSearch: {}}]
+                }
+            });
         })
     ]);
 

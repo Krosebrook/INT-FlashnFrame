@@ -19,6 +19,8 @@ import { UserSettingsProvider } from './contexts/UserSettingsContext';
 import { InstallPrompt, OfflineIndicator, OnlineIndicator, UpdatePrompt } from './components/PWAPrompts';
 import { RateLimitProvider, useRateLimitContext } from './contexts/RateLimitContext';
 import { RateLimitBanner } from './components/RateLimitBanner';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { ToastProvider } from './components/Toast';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -102,33 +104,43 @@ const AppContent: React.FC = () => {
 
         <div className="flex-1">
             <Suspense fallback={<PageLoader />}>
+                <ErrorBoundary>
                 {currentView === ViewMode.HOME && (
                     <Home onNavigate={handleNavigate} />
                 )}
                 {currentView === ViewMode.REPO_ANALYZER && (
+                    <ErrorBoundary>
                     <div className="animate-in fade-in-30 slide-in-from-bottom-4 duration-500 ease-out">
                         <RepoAnalyzer 
                             onNavigate={handleNavigate} 
                         />
                     </div>
+                    </ErrorBoundary>
                 )}
                 {currentView === ViewMode.ARTICLE_INFOGRAPHIC && (
+                    <ErrorBoundary>
                     <div className="animate-in fade-in-30 slide-in-from-bottom-4 duration-500 ease-out">
                         <ArticleToInfographic />
                     </div>
+                    </ErrorBoundary>
                 )}
                 {currentView === ViewMode.IMAGE_EDITOR && (
+                    <ErrorBoundary>
                     <div className="animate-in fade-in-30 slide-in-from-bottom-4 duration-500 ease-out">
                         <ImageEditor 
                             onNavigate={handleNavigate}
                         />
                     </div>
+                    </ErrorBoundary>
                 )}
                 {currentView === ViewMode.DEV_STUDIO && (
+                    <ErrorBoundary>
                     <div className="animate-in fade-in-30 slide-in-from-bottom-4 duration-500 ease-out">
                         <DevStudio onNavigate={handleNavigate} />
                     </div>
+                    </ErrorBoundary>
                 )}
+                </ErrorBoundary>
             </Suspense>
         </div>
       </main>
@@ -163,9 +175,12 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <UserSettingsProvider>
+          <ToastProvider>
           <RateLimitProvider>
             <ProjectProvider>
+              <ErrorBoundary>
               <AppContent />
+              </ErrorBoundary>
               <GlobalRateLimitBanner />
               <UserSettingsModal />
               <OfflineIndicator />
@@ -174,6 +189,7 @@ const App: React.FC = () => {
               <UpdatePrompt />
             </ProjectProvider>
           </RateLimitProvider>
+          </ToastProvider>
         </UserSettingsProvider>
       </ThemeProvider>
     </QueryClientProvider>

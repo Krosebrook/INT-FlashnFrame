@@ -219,6 +219,21 @@ async function startServer() {
     }
   });
 
+  app.get("/api/ai/key", (req, res) => {
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+      const key = process.env.GEMINI_API_KEY;
+      if (!key) {
+        return res.status(404).json({ message: "No API key configured" });
+      }
+      return res.json({ key });
+    }
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) {
+      return res.status(404).json({ message: "No API key configured" });
+    }
+    res.json({ key });
+  });
+
   app.get("/api/health", (_req, res) => {
     res.json({
       status: "ok",
