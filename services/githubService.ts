@@ -257,47 +257,51 @@ export async function fetchRepoFileTree(owner: string, repo: string): Promise<Re
   
   return deduplicatedFetch(cacheKey, () => 
     cachedFetch(cacheKey, async () => {
-      const branches = ['main', 'master'];
-
-      for (const branch of branches) {
-        try {
-          const response = await fetch(
-            `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
-            { headers: getGitHubHeaders() }
-          );
-
-          if (response.ok) {
-            const data = await response.json();
-            
-            if (data.truncated) {
-              console.warn('Warning: Repository tree is too large and was truncated by GitHub API.');
-            }
-
-            return (data.tree || []).filter((item: any) => 
-              item.type === 'blob' && 
-              item.path.match(/\.(js|jsx|ts|tsx|py|go|rs|java|c|cpp|h|hpp|cs|php|rb|swift|kt|dart|json|yaml|yml|toml|xml|html|css)$/i) &&
-              !item.path.includes('node_modules') &&
-              !item.path.includes('dist/') &&
-              !item.path.includes('build/') &&
-              !item.path.startsWith('.')
-            );
-          }
-
-          if (response.status === 403 || response.status === 429) {
-            throw new Error('GitHub API rate limit exceeded. Please try again later (usually resets in an hour).');
-          }
-          
-        } catch (error: any) {
-          if (error.message.includes('rate limit')) {
-            throw error;
-          }
-          if (branch === branches[branches.length - 1]) {
-             console.error('Error fetching repo tree:', error);
-          }
-        }
+      const headers: HeadersInit = {};
+      if (userProvidedGitHubToken) {
+        headers['Authorization'] = `Bearer ${userProvidedGitHubToken}`;
       }
 
-      throw new Error(`Failed to fetch repository. It might be private, non-existent, or using a non-standard default branch (checked: ${branches.join(', ')}).`);
+      try {
+        const response = await fetch(
+          `/api/github/tree/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
+          { headers }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+
+          if (data.truncated) {
+            console.warn('Warning: Repository tree is too large and was truncated by GitHub API.');
+          }
+
+          return (data.tree || []).filter((item: any) => 
+            item.type === 'blob' && 
+            item.path.match(/\.(js|jsx|ts|tsx|py|go|rs|java|c|cpp|h|hpp|cs|php|rb|swift|kt|dart|json|yaml|yml|toml|xml|html|css)$/i) &&
+            !item.path.includes('node_modules') &&
+            !item.path.includes('dist/') &&
+            !item.path.includes('build/') &&
+            !item.path.startsWith('.')
+          );
+        }
+
+        if (response.status === 429) {
+          throw new Error('GitHub API rate limit exceeded. Please try again later (usually resets in an hour).');
+        }
+
+        if (response.status === 404) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Repository not found. It might be private, non-existent, or using a non-standard default branch.');
+        }
+
+        throw new Error('Failed to fetch repository data. Please try again.');
+      } catch (error: any) {
+        if (error.message.includes('rate limit') || error.message.includes('not found') || error.message.includes('Repository not found')) {
+          throw error;
+        }
+        console.error('Error fetching repo tree:', error);
+        throw new Error(`Failed to fetch repository: ${error.message || 'Network error'}`);
+      }
     }, CACHE_TTL)
   );
 }

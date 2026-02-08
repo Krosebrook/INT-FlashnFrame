@@ -219,6 +219,61 @@ async function startServer() {
     }
   });
 
+  app.get("/api/github/tree/:owner/:repo", async (req, res) => {
+    const { owner, repo } = req.params;
+    if (!owner || !repo) {
+      return res.status(400).json({ message: "Owner and repo are required" });
+    }
+
+    const branches = ["main", "master"];
+    const headers: Record<string, string> = {
+      Accept: "application/vnd.github.v3+json",
+      "User-Agent": "Flash-n-Frame-Server",
+    };
+
+    const clientAuth = req.headers.authorization;
+    if (clientAuth && clientAuth.startsWith("Bearer ")) {
+      headers["Authorization"] = clientAuth;
+    } else if (process.env.GITHUB_TOKEN) {
+      headers["Authorization"] = `Bearer ${process.env.GITHUB_TOKEN}`;
+    }
+
+    for (const branch of branches) {
+      try {
+        const response = await fetch(
+          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/trees/${branch}?recursive=1`,
+          { headers }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          return res.json(data);
+        }
+
+        if (response.status === 403 || response.status === 429) {
+          return res.status(429).json({
+            message: "GitHub API rate limit exceeded. Please try again later.",
+          });
+        }
+
+        if (response.status === 404) {
+          continue;
+        }
+
+        continue;
+      } catch (error: any) {
+        if (branch === branches[branches.length - 1]) {
+          console.error("GitHub proxy error:", error);
+        }
+        continue;
+      }
+    }
+
+    return res.status(404).json({
+      message: `Repository not found or uses a non-standard default branch. Checked branches: ${branches.join(", ")}`,
+    });
+  });
+
   app.get("/api/ai/key", (req, res) => {
     if (!req.isAuthenticated || !req.isAuthenticated()) {
       const key = process.env.GEMINI_API_KEY;

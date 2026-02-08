@@ -131,3 +131,4 @@ A full user signup and authentication system is implemented:
 -   **API key validation**: Gemini and GitHub keys are now validated on save with user feedback (loading spinner, success/error messages). Invalid keys are rejected.
 -   **Service worker fix**: `/api/ai/key` endpoint is now excluded from SW caching to prevent stale key data in PWA mode.
 -   **Improved error messages**: Invalid API key errors now show clear, actionable messages instead of generic errors.
+-   **GitHub API proxy**: Added `/api/github/tree/:owner/:repo` backend endpoint to route GitHub API calls server-side, fixing browser rate-limit and network issues. Frontend `githubService.ts` now calls the proxy instead of GitHub directly. User-provided GitHub tokens are forwarded to GitHub for higher rate limits and private repo access. Service worker excludes `/api/github/` from caching.
