@@ -17,6 +17,29 @@ export function getUserGitHubToken(): string | null {
   return userProvidedGitHubToken;
 }
 
+export async function validateGitHubToken(token: string): Promise<{ valid: boolean; error?: string }> {
+  try {
+    const res = await fetch('https://api.github.com/user', {
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (res.ok) {
+      return { valid: true };
+    }
+    if (res.status === 401) {
+      return { valid: false, error: 'This token is invalid or expired. Please generate a new one.' };
+    }
+    if (res.status === 403) {
+      return { valid: false, error: 'This token does not have the required permissions.' };
+    }
+    return { valid: false, error: `Token verification failed (status ${res.status}).` };
+  } catch (error: any) {
+    return { valid: false, error: `Could not verify token: ${error?.message || 'Network error'}` };
+  }
+}
+
 function getGitHubHeaders(): HeadersInit {
   const headers: HeadersInit = {
     'Accept': 'application/vnd.github.v3+json',

@@ -103,6 +103,8 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   
   if (url.includes('chrome-extension') || url.includes('extension')) return;
+
+  if (url.includes('/api/ai/key')) return;
   
   if (matchesCacheStrategy(url, CACHE_STRATEGIES.cacheFirst)) {
     event.respondWith(cacheFirstStrategy(request));

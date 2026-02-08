@@ -53,6 +53,26 @@ export async function ensureAiClient(): Promise<GoogleGenAI> {
   return new GoogleGenAI({ apiKey: key });
 }
 
+export async function validateGeminiKey(key: string): Promise<{ valid: boolean; error?: string }> {
+  try {
+    const client = new GoogleGenAI({ apiKey: key });
+    const response = await client.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: 'Say "ok"',
+    });
+    return { valid: true };
+  } catch (error: any) {
+    const msg = (error?.message || error?.toString?.() || '').toLowerCase();
+    if (msg.includes('api key not valid') || msg.includes('invalid') || msg.includes('401') || msg.includes('403')) {
+      return { valid: false, error: 'This API key is invalid. Please check it and try again.' };
+    }
+    if (msg.includes('429') || msg.includes('rate limit') || msg.includes('quota')) {
+      return { valid: true, error: 'Key is valid but has hit its rate limit. It will work once the limit resets.' };
+    }
+    return { valid: false, error: `Could not verify key: ${error?.message || 'Unknown error'}` };
+  }
+}
+
 export const IMAGE_MODELS = ['gemini-3-pro-image-preview', 'gemini-2.5-flash-preview-image'];
 export const TEXT_MODELS = ['gemini-3-pro-preview', 'gemini-2.5-pro', 'gemini-2.5-flash'];
 
@@ -115,6 +135,29 @@ function isQuotaError(error: any): boolean {
          (msg.includes('billing') || msg.includes('payment required') || msg.includes('402'));
 }
 
+function isApiKeyError(error: any): boolean {
+  const msg = (error?.message || error?.toString?.() || '').toLowerCase();
+  const status = error?.status || error?.httpStatus;
+  return status === 401 || status === 403 ||
+    msg.includes('api key not valid') || msg.includes('invalid api key') ||
+    msg.includes('api_key_invalid') || msg.includes('permission denied') ||
+    (msg.includes('401') && (msg.includes('key') || msg.includes('auth')));
+}
+
+function getApiKeyErrorMessage(error: any): string {
+  const msg = (error?.message || error?.toString?.() || '').toLowerCase();
+  if (msg.includes('api key not valid') || msg.includes('invalid') || msg.includes('401')) {
+    return 'Your Gemini API key is invalid. Please go to Settings and enter a valid key.';
+  }
+  if (msg.includes('permission denied') || msg.includes('403')) {
+    return 'Your Gemini API key does not have permission for this operation. Please check the key has the correct permissions.';
+  }
+  if (msg.includes('billing') || msg.includes('payment') || msg.includes('402')) {
+    return 'Your Gemini API account needs billing enabled. Please check your Google AI Studio account.';
+  }
+  return 'API key error. Please verify your Gemini API key in Settings.';
+}
+
 async function withSmartRetry<T>(
   fn: () => Promise<T>,
   maxRetries: number = 2,
@@ -129,6 +172,9 @@ async function withSmartRetry<T>(
     try {
       return await fn();
     } catch (error: any) {
+      if (isApiKeyError(error)) {
+        throw new Error(getApiKeyErrorMessage(error));
+      }
       if (isRateLimitError(error)) {
         const retryMatch = (error.message || '').match(/retry.?after[:\s]*(\d+)/i);
         const retryAfter = retryMatch ? parseInt(retryMatch[1], 10) : 60;

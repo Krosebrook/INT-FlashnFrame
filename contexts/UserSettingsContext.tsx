@@ -89,11 +89,20 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
     delete newKeys[service];
     setApiKeys(newKeys);
     saveToStorage(newKeys);
+
+    if (service === 'geminiKey') {
+      setUserGeminiKey(null);
+    }
+    if (service === 'githubToken') {
+      setUserGitHubToken(null);
+    }
   };
 
   const clearAllKeys = () => {
     setApiKeys({});
     localStorage.removeItem(STORAGE_KEY);
+    setUserGeminiKey(null);
+    setUserGitHubToken(null);
   };
 
   const hasKey = (service: keyof UserApiKeys) => {

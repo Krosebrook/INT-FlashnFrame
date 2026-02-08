@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { X, Key, Eye, EyeOff, Check, AlertCircle, Github, Sparkles, Brain, BookOpen, HardDrive, Cloud, Server, Users, Headphones, Lock, Zap, Monitor, MessageSquare, Share2, Grid, FileText } from 'lucide-react';
+import { X, Key, Eye, EyeOff, Check, AlertCircle, Github, Sparkles, Brain, BookOpen, HardDrive, Cloud, Server, Users, Headphones, Lock, Zap, Monitor, MessageSquare, Share2, Grid, FileText, Loader2 } from 'lucide-react';
 import { useUserSettings, UserApiKeys } from '../contexts/UserSettingsContext';
+import { validateGeminiKey } from '../services/geminiService';
+import { validateGitHubToken } from '../services/githubService';
 
 interface ApiKeyField {
   key: keyof UserApiKeys;
@@ -196,6 +198,8 @@ export default function UserSettingsModal() {
   const { apiKeys, setApiKey, clearApiKey, isSettingsOpen, closeSettings, hasKey } = useUserSettings();
   const [visibleFields, setVisibleFields] = useState<Set<keyof UserApiKeys>>(new Set());
   const [editValues, setEditValues] = useState<Partial<UserApiKeys>>({});
+  const [validating, setValidating] = useState<Set<keyof UserApiKeys>>(new Set());
+  const [validationResults, setValidationResults] = useState<Record<string, { valid: boolean; error?: string }>>({});
 
   if (!isSettingsOpen) return null;
 
@@ -211,17 +215,42 @@ export default function UserSettingsModal() {
 
   const handleChange = (key: keyof UserApiKeys, value: string) => {
     setEditValues({ ...editValues, [key]: value });
+    setValidationResults((prev) => { const next = { ...prev }; delete next[key]; return next; });
   };
 
-  const handleSave = (key: keyof UserApiKeys) => {
+  const handleSave = async (key: keyof UserApiKeys) => {
     const value = editValues[key];
     if (value !== undefined) {
-      if (value.trim()) {
-        setApiKey(key, value.trim());
-      } else {
+      if (!value.trim()) {
         clearApiKey(key);
+        setEditValues({ ...editValues, [key]: undefined });
+        return;
       }
-      setEditValues({ ...editValues, [key]: undefined });
+
+      const trimmed = value.trim();
+
+      if (key === 'geminiKey' || key === 'githubToken') {
+        setValidating((prev) => new Set(prev).add(key));
+        setValidationResults((prev) => { const next = { ...prev }; delete next[key]; return next; });
+
+        let result: { valid: boolean; error?: string };
+        if (key === 'geminiKey') {
+          result = await validateGeminiKey(trimmed);
+        } else {
+          result = await validateGitHubToken(trimmed);
+        }
+
+        setValidating((prev) => { const next = new Set(prev); next.delete(key); return next; });
+        setValidationResults((prev) => ({ ...prev, [key]: result }));
+
+        if (result.valid) {
+          setApiKey(key, trimmed);
+          setEditValues({ ...editValues, [key]: undefined });
+        }
+      } else {
+        setApiKey(key, trimmed);
+        setEditValues({ ...editValues, [key]: undefined });
+      }
     }
   };
 
@@ -314,12 +343,30 @@ export default function UserSettingsModal() {
                         {isEditing(field.key) && (
                           <button
                             onClick={() => handleSave(field.key)}
-                            className="px-4 py-2 bg-[var(--accent-primary)] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+                            disabled={validating.has(field.key)}
+                            className="px-4 py-2 bg-[var(--accent-primary)] text-white rounded-lg hover:opacity-90 transition-opacity font-medium disabled:opacity-50 flex items-center gap-2"
                           >
-                            Save
+                            {validating.has(field.key) ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Checking...
+                              </>
+                            ) : (
+                              'Save'
+                            )}
                           </button>
                         )}
                       </div>
+                      {validationResults[field.key] && (
+                        <div className={`mt-2 text-sm flex items-center gap-2 ${validationResults[field.key].valid ? 'text-green-400' : 'text-red-400'}`}>
+                          {validationResults[field.key].valid ? (
+                            <Check className="w-4 h-4 flex-shrink-0" />
+                          ) : (
+                            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                          )}
+                          <span>{validationResults[field.key].valid ? (validationResults[field.key].error || 'Key verified and saved successfully!') : validationResults[field.key].error}</span>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

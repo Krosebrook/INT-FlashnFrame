@@ -127,3 +127,7 @@ A full user signup and authentication system is implemented:
 -   Added ARIA labels and roles to navigation tabs (Accessibility).
 -   Added reduce-motion support and skip-splash option to splash screen (UX).
 -   Updated deployment config from static to autoscale for backend support.
+-   **Fixed PWA API key handling**: `clearApiKey` and `clearAllKeys` now properly reset in-memory service variables, preventing stale keys.
+-   **API key validation**: Gemini and GitHub keys are now validated on save with user feedback (loading spinner, success/error messages). Invalid keys are rejected.
+-   **Service worker fix**: `/api/ai/key` endpoint is now excluded from SW caching to prevent stale key data in PWA mode.
+-   **Improved error messages**: Invalid API key errors now show clear, actionable messages instead of generic errors.
