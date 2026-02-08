@@ -87,13 +87,19 @@ export async function withModelFallback<T>(
   callFn: (model: string) => Promise<T>
 ): Promise<T> {
   let lastError: any;
-  for (const model of models) {
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    const hasMoreModels = i < models.length - 1;
     try {
       return await callFn(model);
     } catch (error: any) {
       lastError = error;
       if (isModelNotAvailable(error)) {
         console.warn(`Model ${model} not available, trying fallback...`);
+        continue;
+      }
+      if (hasMoreModels && (isRateLimitError(error) || isQuotaError(error))) {
+        console.warn(`Model ${model} hit rate/quota limit, trying fallback...`);
         continue;
       }
       throw error;

@@ -31,28 +31,6 @@
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
-    },
-    {
-      "src": "/images/icon-security.png",
-      "sizes": "1024x1024",
-      "type": "image/png",
-      "purpose": "any"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshots/desktop-home.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Home screen on desktop"
-    },
-    {
-      "src": "/screenshots/mobile-home.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Home screen on mobile"
     }
   ],
   "shortcuts": [
@@ -60,22 +38,19 @@
       "name": "GitFlow",
       "short_name": "GitFlow",
       "description": "Analyze GitHub repositories",
-      "url": "/?view=gitflow",
-      "icons": [{ "src": "/icons/shortcut-gitflow.png", "sizes": "96x96" }]
+      "url": "/?view=gitflow"
     },
     {
       "name": "SiteSketch",
       "short_name": "SiteSketch",
       "description": "Convert articles to infographics",
-      "url": "/?view=sitesketch",
-      "icons": [{ "src": "/icons/shortcut-sitesketch.png", "sizes": "96x96" }]
+      "url": "/?view=sitesketch"
     },
     {
       "name": "DevStudio",
       "short_name": "DevStudio",
       "description": "Interactive code exploration",
-      "url": "/?view=devstudio",
-      "icons": [{ "src": "/icons/shortcut-devstudio.png", "sizes": "96x96" }]
+      "url": "/?view=devstudio"
     }
   ],
   "share_target": {
