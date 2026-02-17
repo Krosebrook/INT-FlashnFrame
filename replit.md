@@ -109,28 +109,24 @@ A full user signup and authentication system is implemented:
 -   `SESSION_SECRET`: Express session secret.
 -   `REPL_ID`: Replit application identifier (auto-set by Replit).
 
+## Documentation
+
+The project has comprehensive documentation in the `docs/` directory:
+
+-   **[README.md](README.md)** - Project overview and quick start
+-   **[docs/README.md](docs/README.md)** - Documentation navigation hub
+-   **[docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)** - Comprehensive guide (1000+ lines)
+-   **[docs/API.md](docs/API.md)** - Server-side REST API + client-side services
+-   **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture
+-   **[docs/FEATURES.md](docs/FEATURES.md)** - Feature descriptions
+-   **[docs/CHANGELOG.md](docs/CHANGELOG.md)** - Version history (v1.0.0 to v3.1.0)
+-   **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines for INT Inc. team
+-   **[SECURITY.md](SECURITY.md)** - Security policy and vulnerability reporting
+-   **ADRs** - Architecture Decision Records in `docs/decisions/`
+-   **Reference** - Database schema, deployment runbook, testing strategy, glossary in `docs/reference/`
+-   **Guides** - Onboarding guide in `docs/how-to-guides/`, troubleshooting in `docs/errors/`
+
 ## Recent Changes (Feb 2026)
--   Fixed Gemini model names to use `-preview` suffix (gemini-3-pro-image-preview, gemini-3-pro-preview).
--   Added intelligent model fallback: IMAGE_MODELS and TEXT_MODELS arrays with automatic retry on 404/model-not-available errors.
--   **Security**: Moved Gemini API key from client-side bundle to server-side `/api/ai/key` endpoint. Vite no longer injects API keys.
--   Added React ErrorBoundary component wrapping AppContent for crash recovery UI.
--   Added ToastProvider notification system for user feedback (success/error/warning/info).
--   Fixed `omniAiService.ts` to use `ensureAiClient()` instead of checking `process.env.API_KEY` (which is empty in browser).
--   Consolidated workflows: removed separate Auth Server workflow, combined into single "Start application" workflow.
--   Fixed cookie `secure` flag to be environment-aware instead of hardcoded `true`.
--   Fixed Vite proxy target from `0.0.0.0:3001` to `localhost:3001`.
--   Fixed Express 5 SPA catch-all route from `/{*splat}` to `/*`.
--   Moved `manifest.json` to `public/` for proper inclusion in production builds.
--   Added production-only guard for static file serving (prevents stale dist files in dev).
--   Added `/api/health` endpoint for DevOps monitoring.
--   Added helmet, CORS, and server-side rate limiting (Security hardening).
--   Added ARIA labels and roles to navigation tabs (Accessibility).
--   Added reduce-motion support and skip-splash option to splash screen (UX).
--   Updated deployment config from static to autoscale for backend support.
--   **Fixed PWA API key handling**: `clearApiKey` and `clearAllKeys` now properly reset in-memory service variables, preventing stale keys.
--   **API key validation**: Gemini and GitHub keys are now validated on save with user feedback (loading spinner, success/error messages). Invalid keys are rejected.
--   **Service worker fix**: `/api/ai/key` endpoint is now excluded from SW caching to prevent stale key data in PWA mode.
--   **Improved error messages**: Invalid API key errors now show clear, actionable messages instead of generic errors.
--   **GitHub API proxy**: Added `/api/github/tree/:owner/:repo` backend endpoint to route GitHub API calls server-side, fixing browser rate-limit and network issues. Frontend `githubService.ts` now calls the proxy instead of GitHub directly. User-provided GitHub tokens are forwarded to GitHub for higher rate limits and private repo access. Service worker excludes `/api/github/` from caching.
--   **Fixed manifest.json**: Removed references to non-existent screenshot files (`desktop-home.png`, `mobile-home.png`) and missing shortcut icons that caused PWA install errors. Removed unused `icon-security.png` reference. Only existing SVG icons remain.
--   **Gemini model fallback on 429/quota**: `withModelFallback` now retries with cheaper fallback models (e.g., `gemini-2.5-flash`) when the primary model hits a 429 rate limit or quota exceeded error, instead of failing immediately.
+-   **v3.1.0**: Fixed manifest.json (removed non-existent files), Gemini model fallback on 429/quota errors, GitHub API proxy endpoint.
+-   **v3.0.0**: Server-side Gemini API key management, security hardening (Helmet, CORS, rate limiting), email/password auth, ErrorBoundary, ToastProvider, ARIA labels, autoscale deployment, PWA fixes, model fallback improvements.
+-   **Documentation overhaul**: Added root README.md, CONTRIBUTING.md, SECURITY.md. Created onboarding guide, troubleshooting guide, database schema reference, deployment runbook, glossary, and testing strategy. Updated CHANGELOG, EXECUTIVE_SUMMARY, REFACTORING_ROADMAP, ADR-003, API.md, and DOCUMENTATION.md to reflect current state.
