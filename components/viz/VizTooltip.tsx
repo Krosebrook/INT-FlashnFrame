@@ -2,7 +2,10 @@
 import React from 'react';
 import { TooltipProps } from 'recharts';
 
-interface CustomTooltipProps extends TooltipProps<number, string> {
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{ value: number; name: string; color: string }>;
+  label?: string;
   currentLevel: string;
   drillPath: string[];
   canDrill: boolean;

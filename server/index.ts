@@ -2,6 +2,7 @@ import express from "express";
 import crypto from "crypto";
 import cookieParser from "cookie-parser";
 import { setupAuth, registerAuthRoutes, authStorage } from "./replit_integrations/auth";
+import { pool } from "./db";
 import bcrypt from "bcryptjs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -67,6 +68,13 @@ function csrfProtection(req: express.Request, res: express.Response, next: expre
 }
 
 async function startServer() {
+  if (!process.env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET environment variable is required. Set it in the Secrets tab.");
+  }
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL environment variable is required. Provision a database first.");
+  }
+
   await setupAuth(app);
   registerAuthRoutes(app);
 
@@ -133,6 +141,11 @@ async function startServer() {
       
       if (!email || !password) {
         return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!EMAIL_REGEX.test(email)) {
+        return res.status(400).json({ message: "Please enter a valid email address" });
       }
 
       if (!PASSWORD_REGEX.test(password)) {
@@ -276,11 +289,7 @@ async function startServer() {
 
   app.get("/api/ai/key", (req, res) => {
     if (!req.isAuthenticated || !req.isAuthenticated()) {
-      const key = process.env.GEMINI_API_KEY;
-      if (!key) {
-        return res.status(404).json({ message: "No API key configured" });
-      }
-      return res.json({ key });
+      return res.status(401).json({ message: "Authentication required to access API key" });
     }
     const key = process.env.GEMINI_API_KEY;
     if (!key) {
@@ -332,9 +341,39 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT} [${isProduction ? "production" : "development"}]`);
   });
+
+  function gracefulShutdown(signal: string) {
+    console.log(`${signal} received. Shutting down gracefully...`);
+    server.close(() => {
+      console.log("HTTP server closed.");
+      pool.end().then(() => {
+        console.log("Database pool closed.");
+        process.exit(0);
+      }).catch(() => process.exit(1));
+    });
+    setTimeout(() => {
+      console.error("Forced shutdown after timeout.");
+      process.exit(1);
+    }, 10000);
+  }
+
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 }
 
-startServer().catch(console.error);
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception:", error);
+  process.exit(1);
+});
+
+startServer().catch((err) => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
+});

@@ -25,7 +25,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ currentView, onN
           title="Home (Alt+1)"
           aria-label="Navigate to Home"
           role="tab"
-          aria-selected={currentView === ViewMode.HOME}
+          aria-selected={false}
         >
           <HomeIcon className="w-4 h-4" />
         </button>

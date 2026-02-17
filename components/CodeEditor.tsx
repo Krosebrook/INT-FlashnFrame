@@ -21,7 +21,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ initialValue, onSave }) => {
         setValue(initialValue);
     }, [initialValue]);
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Tab') {
             e.preventDefault();
             const start = e.currentTarget.selectionStart;

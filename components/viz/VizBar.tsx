@@ -42,7 +42,7 @@ export const VizBar: React.FC<VizBarProps> = ({ data, onDrill, currentLevel, dri
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} onClick={handleClick} cursor="pointer">
+      <BarChart data={data} onClick={handleClick} style={{ cursor: "pointer" }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.3} />
         <XAxis dataKey={currentLevel} {...commonAxisProps} />
         <YAxis {...commonAxisProps} />

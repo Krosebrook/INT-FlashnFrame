@@ -42,7 +42,7 @@ export const VizArea: React.FC<VizAreaProps> = ({ data, onDrill, currentLevel, d
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data} onClick={handleClick} cursor="pointer">
+      <AreaChart data={data} onClick={handleClick} style={{ cursor: "pointer" }}>
         <defs>
           <linearGradient id="colorMetric" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4}/>

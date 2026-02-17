@@ -8,7 +8,9 @@
     "dev:server": "npx tsx server/index.ts",
     "build": "vite build",
     "preview": "vite preview",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -21,6 +23,8 @@
     "@types/express-session": "^1.18.2",
     "@types/memoizee": "^0.4.12",
     "@types/passport": "^1.0.17",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.23",
     "bcryptjs": "^3.0.3",
     "connect-pg-simple": "^10.0.0",
@@ -34,6 +38,7 @@
     "express-rate-limit": "^8.2.1",
     "express-session": "^1.18.2",
     "helmet": "^8.1.0",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.552.0",
     "memoizee": "^0.4.17",
     "openid-client": "^6.8.1",
