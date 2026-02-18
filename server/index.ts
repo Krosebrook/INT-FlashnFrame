@@ -9,6 +9,8 @@ import { fileURLToPath } from "url";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
+import pinoHttp from "pino-http";
+import { logger } from "./logger";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -50,6 +52,7 @@ app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/signup", authLimiter);
 app.use("/api/", apiLimiter);
 
+app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => (req as any).url === "/api/ping" } }));
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 
@@ -108,7 +111,7 @@ async function startServer() {
       // Placeholder for actual magic link logic
       res.json({ message: "Magic link sent! Check your email." });
     } catch (error) {
-      console.error("Magic link error:", error);
+      logger.error(error, "Magic link error");
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -130,7 +133,7 @@ async function startServer() {
         res.json({ message: "Verification code sent to your phone." });
       }
     } catch (error) {
-      console.error("Phone auth error:", error);
+      logger.error(error, "Phone auth error");
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -171,7 +174,7 @@ async function startServer() {
         } as any, 
         (err) => {
           if (err) {
-            console.error("Session creation error:", err);
+            logger.error(err, "Session creation error after signup");
             return res.status(500).json({ message: "Account created but failed to log in. Please try logging in." });
           }
           res.json({ 
@@ -181,7 +184,7 @@ async function startServer() {
         }
       );
     } catch (error) {
-      console.error("Signup error:", error);
+      logger.error(error, "Signup error");
       res.status(500).json({ message: "Failed to create account. Please try again." });
     }
   });
@@ -217,7 +220,7 @@ async function startServer() {
         } as any, 
         (err) => {
           if (err) {
-            console.error("Session creation error:", err);
+            logger.error(err, "Session creation error after login");
             return res.status(500).json({ message: "Login failed. Please try again." });
           }
           res.json({ 
@@ -227,7 +230,7 @@ async function startServer() {
         }
       );
     } catch (error) {
-      console.error("Login error:", error);
+      logger.error(error, "Login error");
       res.status(500).json({ message: "Login failed. Please try again." });
     }
   });
@@ -276,7 +279,7 @@ async function startServer() {
         continue;
       } catch (error: any) {
         if (branch === branches[branches.length - 1]) {
-          console.error("GitHub proxy error:", error);
+          logger.error(error, "GitHub proxy error");
         }
         continue;
       }
@@ -342,20 +345,20 @@ async function startServer() {
   }
 
   const server = app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on port ${PORT} [${isProduction ? "production" : "development"}]`);
+    logger.info({ port: PORT, env: isProduction ? "production" : "development" }, "Server started");
   });
 
   function gracefulShutdown(signal: string) {
-    console.log(`${signal} received. Shutting down gracefully...`);
+    logger.info({ signal }, "Graceful shutdown initiated");
     server.close(() => {
-      console.log("HTTP server closed.");
+      logger.info("HTTP server closed");
       pool.end().then(() => {
-        console.log("Database pool closed.");
+        logger.info("Database pool closed");
         process.exit(0);
       }).catch(() => process.exit(1));
     });
     setTimeout(() => {
-      console.error("Forced shutdown after timeout.");
+      logger.error("Forced shutdown after timeout");
       process.exit(1);
     }, 10000);
   }
@@ -365,15 +368,15 @@ async function startServer() {
 }
 
 process.on("unhandledRejection", (reason) => {
-  console.error("Unhandled promise rejection:", reason);
+  logger.error(reason, "Unhandled promise rejection");
 });
 
 process.on("uncaughtException", (error) => {
-  console.error("Uncaught exception:", error);
+  logger.fatal(error, "Uncaught exception");
   process.exit(1);
 });
 
 startServer().catch((err) => {
-  console.error("Failed to start server:", err);
+  logger.fatal(err, "Failed to start server");
   process.exit(1);
 });

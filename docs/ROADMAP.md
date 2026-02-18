@@ -25,7 +25,7 @@ Quick-win initiatives that deliver high value with moderate effort. These unbloc
 
 ### 1. Structured Logging
 
-**WSJF Score:** 8.0 | **Status:** Not Started
+**WSJF Score:** 8.0 | **Status:** Done (v3.2.0)
 
 **Description:**  
 Replace ad-hoc `console.log()` and `console.error()` statements with a structured logging framework (Pino or Winston). Implement log levels (debug, info, warn, error), request correlation IDs, and JSON output for production environment. This improves operational visibility and makes debugging production issues feasible.
@@ -115,10 +115,10 @@ Integrate Sentry (or similar error tracking service) to automatically capture un
 
 ### 3. Bundle Optimization
 
-**WSJF Score:** 6.5 | **Status:** Not Started
+**WSJF Score:** 6.5 | **Status:** Done (v3.2.0)
 
 **Description:**  
-Split the main application bundle (currently ~619KB) using Vite's `manualChunks` configuration. Separate heavy dependencies (recharts, d3, react-dom) into lazy-loaded chunks. Implement route-based code splitting. Add bundle size monitoring to prevent regressions. Target main bundle <200KB.
+Split the main application bundle (was ~619KB, now 108KB) using Vite's `manualChunks` configuration. Separated heavy dependencies (d3, react-dom, google-genai, lucide, tanstack) into lazy-loaded chunks. Removed unused dependency recharts. Main bundle reduced by 82%.
 
 **Scoring Breakdown:**
 - Business Value: 5 (faster initial load improves perceived performance and SEO)
@@ -167,10 +167,10 @@ Split the main application bundle (currently ~619KB) using Vite's `manualChunks`
 
 ### 4. Dead Code Cleanup
 
-**WSJF Score:** 6.5 | **Status:** Not Started
+**WSJF Score:** 6.5 | **Status:** Done (v3.2.0)
 
 **Description:**  
-Audit and remove unused or partially-used components identified in the codebase. Candidates include D3FlowChart, ImageViewer, HistoryGrid, InfographicResultCard, and TaskList. Verify import statements and feature flags to ensure removal doesn't break functionality. This improves maintainability and reduces cognitive load.
+Audited and removed 30 unused components with zero external references. Includes all viz/ components, drawer panels, background effects, and several standalone components (HistoryGrid, TaskList, IntroAnimation, etc.). Also removed unused dependencies (recharts, crypto-js). TypeScript verified clean after cleanup.
 
 **Scoring Breakdown:**
 - Business Value: 4 (reduces maintenance burden and onboarding complexity)
@@ -715,10 +715,10 @@ Enhance offline-first capabilities beyond basic IndexedDB persistence. Implement
 
 | # | Initiative | Phase | WSJF | Status | Owner | ETA |
 |---|-----------|-------|------|--------|-------|-----|
-| 1 | Structured Logging | Immediate | 8.0 | Not Started | TBD | — |
+| 1 | Structured Logging | Immediate | 8.0 | Done (v3.2.0) | — | Feb 2026 |
 | 2 | Error Tracking | Immediate | 7.7 | Not Started | TBD | — |
-| 3 | Bundle Optimization | Immediate | 6.5 | Not Started | TBD | — |
-| 4 | Dead Code Cleanup | Immediate | 6.5 | Not Started | TBD | — |
+| 3 | Bundle Optimization | Immediate | 6.5 | Done (v3.2.0) | — | Feb 2026 |
+| 4 | Dead Code Cleanup | Immediate | 6.5 | Done (v3.2.0) | — | Feb 2026 |
 | 5 | DB Migration Strategy | Near-term | 5.0 | Not Started | TBD | — |
 | 6 | CI/CD Pipeline | Near-term | 4.6 | Not Started | TBD | — |
 | 7 | Request Metrics | Near-term | 4.7 | Not Started | TBD | — |

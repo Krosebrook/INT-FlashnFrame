@@ -37,6 +37,7 @@ The application uses a modular component architecture including:
 
 ### Server Architecture
 -   **Framework**: Express with TypeScript (`server/index.ts`).
+-   **Logging**: Pino structured logger (`server/logger.ts`) with pino-http request logging. Pretty-printed in dev, JSON in production.
 -   **Environment Detection**: `isProduction` flag uses `NODE_ENV` and `REPLIT_DEPLOYMENT` env vars.
 -   **Port Config**: Port 5000 in production (serves frontend + API), Port 3001 in development (API only, Vite handles frontend).
 -   **Static File Serving**: Production-only; serves from `dist/` with cache headers. HTML files use `no-cache`.
@@ -130,7 +131,8 @@ The project has comprehensive documentation in the `docs/` directory:
 -   **Guides** - Onboarding guide in `docs/how-to-guides/`, troubleshooting in `docs/errors/`
 
 ## Recent Changes (Feb 2026)
--   **Documentation audit (Feb 18)**: Created RISK_REGISTER.md (16 findings, 8 fixed), ROADMAP.md (13 WSJF-prioritized items), DELIVERABLES.md (APIs, auth flows, security posture). Updated ARCHITECTURE.md with full-stack ASCII diagram including Express server, auth, and security layers. Updated FEATURES.md with implementation matrix (29 shipped, 8 partial, 8 UI-only).
+-   **v3.2.0 Engineering (Feb 18)**: Structured logging with pino (server/logger.ts + pino-http middleware). Bundle optimization via manualChunks — main chunk reduced from 607KB to 108KB (-82%). Dead code cleanup: removed 30 unused components and 2 unused dependencies (recharts, crypto-js). TypeScript clean.
+-   **Documentation audit (Feb 18)**: Created RISK_REGISTER.md (16 findings, 10 fixed), ROADMAP.md (13 WSJF-prioritized items, 3 done), DELIVERABLES.md (APIs, auth flows, security posture). Updated ARCHITECTURE.md with full-stack ASCII diagram including Express server, auth, and security layers. Updated FEATURES.md with implementation matrix (29 shipped, 8 partial, 8 UI-only).
 -   **v3.1.0**: Fixed manifest.json (removed non-existent files), Gemini model fallback on 429/quota errors, GitHub API proxy endpoint.
 -   **v3.0.0**: Server-side Gemini API key management, security hardening (Helmet, CORS, rate limiting), email/password auth, ErrorBoundary, ToastProvider, ARIA labels, autoscale deployment, PWA fixes, model fallback improvements.
 -   **Documentation overhaul**: Added root README.md, CONTRIBUTING.md, SECURITY.md. Created onboarding guide, troubleshooting guide, database schema reference, deployment runbook, glossary, and testing strategy. Updated CHANGELOG, EXECUTIVE_SUMMARY, REFACTORING_ROADMAP, ADR-003, API.md, and DOCUMENTATION.md to reflect current state.

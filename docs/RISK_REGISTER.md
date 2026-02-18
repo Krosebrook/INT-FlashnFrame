@@ -10,15 +10,15 @@
 
 | Status | Count |
 |--------|-------|
-| **Fixed** | 8 |
-| **Open** | 6 |
+| **Fixed** | 10 |
+| **Open** | 4 |
 | **Accepted** | 2 |
 | **Total Items** | 16 |
 
 - **Critical Issues:** 1 (Fixed)
 - **High Priority Issues:** 2 (Fixed)
-- **Medium Priority Issues:** 8 (Fixed: 5, Open: 3)
-- **Low Priority Issues:** 5 (Fixed: 2, Open: 3)
+- **Medium Priority Issues:** 8 (Fixed: 6, Open: 2)
+- **Low Priority Issues:** 5 (Fixed: 3, Open: 2)
 
 ---
 
@@ -34,14 +34,14 @@
 | R6 | Medium | DevOps | No lint/typecheck scripts in package.json | `package.json` scripts section | S | FIXED (Feb 2026) | `grep typecheck package.json` |
 | R7 | Medium | Quality | SESSION_SECRET non-null assertion crashes without helpful error | `server/replit_integrations/auth/replitAuth.ts:31` | S | FIXED (Feb 2026) | Startup guard in startServer() |
 | R8 | Medium | Security | CSRF token stored in non-httpOnly cookie | `server/index.ts:76` — `httpOnly: false` | S | ACCEPTED (by design — double-submit pattern requires JS access) | N/A |
-| R9 | Medium | Observability | No structured logging — only console.log/console.error | Throughout server/index.ts | M | OPEN | Future: add pino or winston |
+| R9 | Medium | Observability | No structured logging — only console.log/console.error | Throughout server/index.ts | M | FIXED (Feb 2026) | `grep "pino" server/index.ts server/logger.ts` |
 | R10 | Medium | Observability | No error tracking (Sentry/equivalent) | No Sentry SDK in package.json | M | OPEN | Future: add Sentry integration |
 | R11 | Medium | Observability | No request metrics (latency, count) | No metrics middleware | M | OPEN | Future: add basic metrics |
 | R12 | Low | DevOps | No DB migration history — uses drizzle-kit push only | No migrations/ directory | M | OPEN | Future: switch to drizzle-kit generate + migrate |
 | R13 | Low | DevOps | No CI/CD pipeline or automated tests | No .github/workflows or test files | L | OPEN | Future: add GitHub Actions CI |
 | R14 | Low | Hygiene | Stale files in attached_assets/ causing spurious TS errors | attached_assets/*.tsx files | S | FIXED (Feb 2026) | `ls attached_assets/*.tsx` returns empty |
 | R15 | Low | Security | Magic link endpoint returns 200 "sent" even without SendGrid configured (only returns 501 if SENDGRID_API_KEY missing) | `server/index.ts:97-101` | S | ACCEPTED (returns 501, no actual send) | Verified: returns 501 without env var |
-| R16 | Low | Performance | Main bundle 619KB (warning threshold 500KB) | `npm run build` output | M | OPEN | Future: manual chunks in vite config |
+| R16 | Low | Performance | Main bundle 619KB (warning threshold 500KB) | `npm run build` output | M | FIXED (Feb 2026) | `npm run build` — main chunk now 108KB, no warnings |
 
 ---
 

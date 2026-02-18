@@ -22,6 +22,29 @@ export default defineConfig(({ mode }) => {
       define: {
         'process.env.API_KEY': JSON.stringify(''),
       },
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks(id) {
+              if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
+                return 'react-vendor';
+              }
+              if (id.includes('node_modules/d3')) {
+                return 'd3';
+              }
+              if (id.includes('node_modules/lucide-react')) {
+                return 'lucide';
+              }
+              if (id.includes('node_modules/@tanstack')) {
+                return 'tanstack';
+              }
+              if (id.includes('node_modules/@google/genai')) {
+                return 'google-genai';
+              }
+            },
+          },
+        },
+      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),

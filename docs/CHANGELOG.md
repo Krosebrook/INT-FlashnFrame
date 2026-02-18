@@ -9,11 +9,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Planned
-- Additional AI model integrations
-- Team collaboration features
-- Export to additional formats
-- Comprehensive test suite (vitest + @testing-library)
-- Service architecture refactoring
+- Error tracking (Sentry integration)
+- CI/CD pipeline
+- Integration tests for API endpoints
+- DB migration strategy (drizzle-kit generate + migrate)
+
+---
+
+## [3.2.0] - 2026-02-18
+
+### Added
+- **Structured logging**: Replaced all `console.log`/`console.error` with [pino](https://getpino.io) structured JSON logger. Includes `pino-http` request logging middleware (skips `/api/ping` noise). Pretty-printed in development, JSON in production. New `server/logger.ts` module.
+- **Bundle code splitting**: Added `manualChunks` to Vite config splitting `react-vendor` (194KB), `d3` (61KB), `google-genai` (254KB), `lucide` (39KB), and `@tanstack/react-query` (41KB) into separate chunks. Main index chunk reduced from **607KB to 108KB** (-82%).
+
+### Removed
+- **30 unused components**: Deleted components with zero external references after dead code analysis. Includes: HistoryGrid, InfographicResultCard, TaskList, IntroAnimation, AnalysisPanel, SearchResults, SideDrawer, OmniSidebar, DashboardIcons, CodeEditor, MagicBar, ArtifactCard, PreviewModal, all 4 background effects (Aurora, Noise, Dots, Ambient), all 5 drawer panels (Enhance, History, Layouts, Settings, Variations), all 9 viz components (ChartRenderer, VizArea, VizBar, VizHeatmap, VizKPI, VizScatter, VizTooltip, VizTreemap, WidgetContainer).
+- **Unused dependencies**: Removed `recharts` (no surviving imports after viz/ cleanup) and `crypto-js` (never imported).
+
+### Fixed
+- **TypeScript**: Inlined `EnhanceType` in `utils/aiHelpers.ts` after removing its source component. Zero TypeScript errors.
 
 ---
 

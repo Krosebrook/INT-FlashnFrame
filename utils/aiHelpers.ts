@@ -4,8 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { EnhanceType } from '../components/drawer/EnhancePanel';
 import { GenerationSettings } from '../types';
+
+type EnhanceType = 'persona' | 'file-populate' | 'a11y' | 'format' | 'dummy' | 'content' | 'responsive' | 'tailwind' | 'charts' | 'enhance-code';
 
 /**
  * Reads a file and returns its base64 representation (without metadata prefix).
