@@ -21,6 +21,11 @@ jobs:
     name: Run Production Readiness Audit
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: read          # Required for checkout
+      pull-requests: write    # Required for PR comments
+      actions: read           # Required for workflow status
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
