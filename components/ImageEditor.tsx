@@ -118,7 +118,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ initialState, onNavigate }) =
 
   const handleEdit = useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!currentState.imageData) return;
+    if (!currentState.imageData || processing) return;
     
     if ((mode === 'style' || mode === 'code') && !prompt) return;
 

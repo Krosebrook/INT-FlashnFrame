@@ -89,6 +89,7 @@ const ArticleToInfographic: React.FC<ArticleToInfographicProps> = () => {
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     
     if (mode === 'single' || mode === 'stats') {
       if (!urlInput.trim()) {

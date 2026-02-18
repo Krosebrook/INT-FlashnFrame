@@ -84,7 +84,7 @@ const DevStudio: React.FC<DevStudioProps> = ({ onNavigate }) => {
   };
 
   const executePrompt = async (promptText: string, nodeOverride?: D3Node | null) => {
-    if (!initialState.fileTree) return;
+    if (!initialState.fileTree || chatLoading) return;
     if (checkBeforeCall()) {
       setChatHistory(prev => [...prev, 
         { role: 'user', text: promptText },
@@ -127,7 +127,7 @@ const DevStudio: React.FC<DevStudioProps> = ({ onNavigate }) => {
   };
 
   const runTool = async (mode: ToolMode) => {
-    if (!initialState?.fileTree || !selectedNode) return;
+    if (!initialState?.fileTree || !selectedNode || toolLoading) return;
     if (checkBeforeCall()) {
       setChatHistory(prev => [...prev, 
         { role: 'model', text: `⏳ Rate limit active. Please wait ${remainingSeconds}s before trying again.` }
