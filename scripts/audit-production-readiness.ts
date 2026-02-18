@@ -866,6 +866,15 @@ class ProductionReadinessAuditor {
     return blockers;
   }
 
+  private extractCategoryShortName(category: string): string {
+    // Extract short name from "1. Category Name" format
+    const parts = category.split('.');
+    if (parts.length >= 2) {
+      return parts.slice(1).join('.').trim();
+    }
+    return category.trim();
+  }
+
   private identifyTopImprovements(): string[] {
     const improvements: string[] = [];
 
@@ -876,7 +885,7 @@ class ProductionReadinessAuditor {
       const scoreDiff = cat.maxScore - cat.score;
       cat.recommendations.forEach(rec => {
         weightedRecs.push({
-          rec: `${cat.category.split('.')[1]?.trim() || cat.category}: ${rec}`,
+          rec: `${this.extractCategoryShortName(cat.category)}: ${rec}`,
           priority: scoreDiff
         });
       });
@@ -902,7 +911,7 @@ class ProductionReadinessAuditor {
     // Analyze weak points
     this.categories.forEach(cat => {
       if (cat.score < cat.maxScore * 0.4) {
-        likelyFailurePoints.push(`${cat.category.split('.')[1]?.trim()}: Very weak (${cat.score}/${cat.maxScore})`);
+        likelyFailurePoints.push(`${this.extractCategoryShortName(cat.category)}: Very weak (${cat.score}/${cat.maxScore})`);
       }
     });
 
@@ -1173,6 +1182,10 @@ class ProductionReadinessAuditor {
   }
 }
 
+import { fileURLToPath, pathToFileURL } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+
 // CLI Interface
 
 async function main() {
@@ -1219,7 +1232,10 @@ async function main() {
   process.exit(exitCode);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Check if this module is being run directly
+const isMainModule = import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isMainModule) {
   main().catch(error => {
     console.error('Fatal error:', error);
     process.exit(1);
