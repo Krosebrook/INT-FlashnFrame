@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+secrets/
+
+# Audit reports
+production-readiness-audit.txt
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

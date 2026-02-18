@@ -83,6 +83,34 @@ flash-n-frame/
 | `npm run dev:server` | Start Express API server (port 3001) |
 | `npm run build` | Build production bundle to `dist/` |
 | `npm run db:push` | Push database schema changes |
+| `npm run audit:readiness` | Run production readiness audit |
+
+## Production Readiness Audit
+
+Flash-n-Frame includes a comprehensive Production Readiness Audit tool that evaluates the application across 10 critical categories:
+
+```bash
+npm run audit:readiness
+```
+
+This tool provides evidence-based assessment for:
+- **Employee/Internal Use**
+- **Public Beta Launch**
+- **Production-Grade Deployment**
+
+The audit examines:
+- Identity & Access Control
+- Secrets & Configuration
+- Data Safety & Privacy
+- Reliability & Error Handling
+- Observability & Monitoring
+- CI/CD & Deployment
+- Security Hardening
+- Testing Coverage
+- Performance & Cost Controls
+- Documentation & Operations
+
+Results are saved to `production-readiness-audit.txt`. See [scripts/README.md](scripts/README.md) for detailed documentation.
 
 ## Documentation
 
