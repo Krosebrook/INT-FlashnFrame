@@ -1,0 +1,82 @@
+SCOPE_MODE: STANDARD
+
+You are a senior full-stack engineer debugging an OAuth error in a Replit app: `invalid_redirect_uri`.
+
+Known production base URL:
+- https://flash-n-frame-1.replit.app/
+
+Goal:
+- Identify the exact `redirect_uri` value our app sends to the OAuth provider.
+- Ensure it EXACTLY matches an allowlisted redirect URI in the provider settings.
+- Fix code + environment variables so redirects are consistent across preview/deploy.
+- Do NOT break working features. Make minimal, targeted edits only.
+- Provide a short verification checklist and a smoke test plan.
+
+Constraints:
+- Never commit secrets. Use Replit Secrets for any credentials.
+- Prefer deterministic config: one canonical BASE_URL, build redirect URIs from it.
+- Preserve existing routing patterns; do not rewrite the auth system unless required.
+- If multiple auth systems exist (NextAuth + Supabase + custom OAuth), detect and pick the active one; explain why.
+
+Step 1 — Discovery (read-only first)
+1) Identify the auth stack:
+   - Search project for: "redirect_uri", "callback", "oauth", "authorize", "NextAuth", "next-auth", "supabase", "auth/callback", "passport", "openid", "OIDC".
+   - Determine which provider is used (Google/GitHub/Microsoft/Auth0/Supabase/Replit Auth/etc.).
+2) Find where redirect URL is constructed:
+   - Locate config/env usage: BASE_URL, NEXTAUTH_URL, NEXT_PUBLIC_SITE_URL, AUTH_URL, SUPABASE_SITE_URL, REDIRECT_URI, CALLBACK_URL, ISSUER, ORIGIN.
+3) Print/Log the actual outgoing authorization URL:
+   - Add temporary, safe logging that prints the decoded redirect_uri (no secrets).
+   - If applicable, inspect network or server logs to extract the exact redirect_uri being sent.
+   - Output the exact redirect_uri string (decoded) you found.
+
+Step 2 — Fix (minimal patch)
+Based on the detected stack, apply the correct fixes:
+
+A) If Next.js + NextAuth:
+- Ensure NEXTAUTH_URL is set to exactly: https://flash-n-frame-1.replit.app
+- Ensure provider callback path matches NextAuth convention:
+  https://flash-n-frame-1.replit.app/api/auth/callback/<provider>
+- Ensure any custom baseUrl logic does not produce http, .repl.co, or trailing slash mismatches.
+- If using a reverse proxy/trust headers issue, ensure correct config so generated URLs use https.
+
+B) If Supabase Auth:
+- Ensure the app uses a single site URL:
+  https://flash-n-frame-1.replit.app
+- Ensure redirectTo uses an allowlisted path (e.g. /auth/callback or /) consistently.
+- Ensure Supabase client config does not default to localhost or preview URLs.
+
+C) If custom OAuth (Express/Passport/etc.):
+- Normalize base URL from one env var (BASE_URL) and derive redirect URI:
+  ${BASE_URL}/<callback-path>
+- Ensure Express trusts proxy headers if needed:
+  app.set("trust proxy", 1)
+- Ensure no trailing slash mismatch.
+
+Step 3 — Environment hardening
+- Create/confirm a single canonical env var:
+  BASE_URL=https://flash-n-frame-1.replit.app
+- Update code to use BASE_URL to construct redirect URIs.
+- Add guardrails:
+  - On startup, validate BASE_URL begins with https:// and contains .replit.app
+  - Validate redirect URI is a fully qualified URL and matches BASE_URL origin.
+
+Step 4 — Verification (must do)
+1) Provide the exact redirect URI we should register in the provider console (copy/paste string).
+2) Provide a smoke test:
+   - Start app
+   - Click login
+   - Confirm the authorize URL contains redirect_uri that EXACTLY matches expected
+   - Complete login
+   - Confirm callback route is hit and session/token established
+3) If still failing, output a “diff-based diagnosis” list:
+   - show old redirect_uri vs new redirect_uri
+   - explain which character/path/scheme differed
+
+Deliverables:
+- A short summary of root cause (exact mismatch).
+- The exact decoded redirect_uri found and the corrected one.
+- A minimal code diff (or file list + patches) showing what you changed.
+- A list of Replit Secrets/env vars to set (names + values, but never include secret values).
+- A verification checklist and rollback instructions.
+
+Start now by performing Step 1 and report findings before making changes.
