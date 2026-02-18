@@ -13,7 +13,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 
 interface AuditConfig {
   repoPath: string;
@@ -88,13 +88,26 @@ class ProductionReadinessAuditor {
     }
   }
 
+  private escapeShellArg(arg: string): string {
+    // Escape shell arguments to prevent command injection
+    // Use single quotes and escape any single quotes in the string
+    return `'${arg.replace(/'/g, "'\\''")}'`;
+  }
+
   private findFiles(pattern: string): string[] {
     try {
-      const result = execSync(`find ${this.repoPath} -type f -name "${pattern}" 2>/dev/null || true`, {
+      // Use array format to avoid shell injection
+      const result = spawnSync('find', [this.repoPath, '-type', 'f', '-name', pattern], {
         encoding: 'utf-8',
-        maxBuffer: 10 * 1024 * 1024
+        maxBuffer: 10 * 1024 * 1024,
+        stdio: ['pipe', 'pipe', 'pipe']
       });
-      return result.split('\n').filter(f => f.trim() && !f.includes('node_modules'));
+      
+      if (result.error) {
+        return [];
+      }
+      
+      return (result.stdout || '').split('\n').filter(f => f.trim() && !f.includes('node_modules'));
     } catch {
       return [];
     }
@@ -104,9 +117,22 @@ class ProductionReadinessAuditor {
     try {
       let count = 0;
       for (const ext of fileExtensions) {
-        const cmd = `grep -r "${pattern}" ${this.repoPath} --include="*.${ext}" 2>/dev/null | wc -l`;
-        const result = execSync(cmd, { encoding: 'utf-8' });
-        count += parseInt(result.trim() || '0');
+        // Use array format to avoid shell injection
+        const result = spawnSync('grep', [
+          '-r',
+          pattern,
+          this.repoPath,
+          `--include=*.${ext}`
+        ], {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+        
+        // grep returns exit code 1 when no matches found, which is not an error
+        if (result.stdout) {
+          const lines = result.stdout.split('\n').filter(l => l.trim());
+          count += lines.length;
+        }
       }
       return count;
     } catch {
@@ -151,8 +177,8 @@ class ProductionReadinessAuditor {
       recommendations.push('Implement comprehensive RBAC');
     }
 
-    // Check for hardcoded credentials
-    const hardcodedCreds = this.searchInFiles('password.*=.*["\'][^"\']{8,}["\']|api.*key.*=.*["\'][^"\']{20,}["\']', ['ts', 'js']);
+    // Check for hardcoded credentials (using simpler pattern for safety)
+    const hardcodedCreds = this.searchInFiles('password.*=|api.*key.*=', ['ts', 'js']);
     if (hardcodedCreds === 0) {
       findings.push('✓ No obvious hardcoded credentials found');
       score += 1.5;
@@ -1183,8 +1209,6 @@ class ProductionReadinessAuditor {
 }
 
 import { fileURLToPath, pathToFileURL } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
 
 // CLI Interface
 
