@@ -117,8 +117,11 @@ The project has comprehensive documentation in the `docs/` directory:
 -   **[docs/README.md](docs/README.md)** - Documentation navigation hub
 -   **[docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)** - Comprehensive guide (1000+ lines)
 -   **[docs/API.md](docs/API.md)** - Server-side REST API + client-side services
--   **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture
--   **[docs/FEATURES.md](docs/FEATURES.md)** - Feature descriptions
+-   **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture with ASCII diagrams
+-   **[docs/FEATURES.md](docs/FEATURES.md)** - Feature descriptions with implementation matrix
+-   **[docs/DELIVERABLES.md](docs/DELIVERABLES.md)** - APIs, data models, auth flows, deployment, security posture
+-   **[docs/RISK_REGISTER.md](docs/RISK_REGISTER.md)** - Security/reliability audit findings (16 items)
+-   **[docs/ROADMAP.md](docs/ROADMAP.md)** - WSJF-prioritized improvement plan
 -   **[docs/CHANGELOG.md](docs/CHANGELOG.md)** - Version history (v1.0.0 to v3.1.0)
 -   **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines for INT Inc. team
 -   **[SECURITY.md](SECURITY.md)** - Security policy and vulnerability reporting
@@ -127,6 +130,7 @@ The project has comprehensive documentation in the `docs/` directory:
 -   **Guides** - Onboarding guide in `docs/how-to-guides/`, troubleshooting in `docs/errors/`
 
 ## Recent Changes (Feb 2026)
+-   **Documentation audit (Feb 18)**: Created RISK_REGISTER.md (16 findings, 8 fixed), ROADMAP.md (13 WSJF-prioritized items), DELIVERABLES.md (APIs, auth flows, security posture). Updated ARCHITECTURE.md with full-stack ASCII diagram including Express server, auth, and security layers. Updated FEATURES.md with implementation matrix (29 shipped, 8 partial, 8 UI-only).
 -   **v3.1.0**: Fixed manifest.json (removed non-existent files), Gemini model fallback on 429/quota errors, GitHub API proxy endpoint.
 -   **v3.0.0**: Server-side Gemini API key management, security hardening (Helmet, CORS, rate limiting), email/password auth, ErrorBoundary, ToastProvider, ARIA labels, autoscale deployment, PWA fixes, model fallback improvements.
 -   **Documentation overhaul**: Added root README.md, CONTRIBUTING.md, SECURITY.md. Created onboarding guide, troubleshooting guide, database schema reference, deployment runbook, glossary, and testing strategy. Updated CHANGELOG, EXECUTIVE_SUMMARY, REFACTORING_ROADMAP, ADR-003, API.md, and DOCUMENTATION.md to reflect current state.
