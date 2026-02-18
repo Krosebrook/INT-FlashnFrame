@@ -86,7 +86,12 @@ export async function withModelFallback<T>(
   models: string[],
   callFn: (model: string) => Promise<T>
 ): Promise<T> {
+  if (isGeminiRateLimited()) {
+    throw new Error(`Rate Limit Active: Please wait ${getGeminiRateLimitRemaining()} seconds before trying again.`);
+  }
+
   let lastError: any;
+  let rateLimitHitCount = 0;
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
     const hasMoreModels = i < models.length - 1;
@@ -99,12 +104,25 @@ export async function withModelFallback<T>(
         continue;
       }
       if (hasMoreModels && (isRateLimitError(error) || isQuotaError(error))) {
+        rateLimitHitCount++;
         console.warn(`Model ${model} hit rate/quota limit, trying fallback...`);
         continue;
+      }
+      if (isRateLimitError(error)) {
+        rateLimitHitCount++;
       }
       throw error;
     }
   }
+
+  if (rateLimitHitCount > 0 && lastError && isRateLimitError(lastError)) {
+    const retryMatch = (lastError.message || '').match(/retry.?after[:\s]*(\d+)/i);
+    const waitMatch = (lastError.message || '').match(/wait\s+(\d+)\s*s/i);
+    const retryAfter = retryMatch ? parseInt(retryMatch[1], 10) :
+                       waitMatch ? parseInt(waitMatch[1], 10) : 15;
+    setGeminiRateLimit(retryAfter);
+  }
+
   throw lastError || new Error('All models unavailable');
 }
 
@@ -169,10 +187,6 @@ async function withSmartRetry<T>(
   maxRetries: number = 1,
   initialDelayMs: number = 1500
 ): Promise<T> {
-  if (isGeminiRateLimited()) {
-    throw new Error(`Rate Limit Active: Please wait ${getGeminiRateLimitRemaining()} seconds before trying again.`);
-  }
-
   let delay = initialDelayMs;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -182,11 +196,6 @@ async function withSmartRetry<T>(
         throw new Error(getApiKeyErrorMessage(error));
       }
       if (isRateLimitError(error)) {
-        const retryMatch = (error.message || '').match(/retry.?after[:\s]*(\d+)/i);
-        const waitMatch = (error.message || '').match(/wait\s+(\d+)\s*s/i);
-        const retryAfter = retryMatch ? parseInt(retryMatch[1], 10) :
-                           waitMatch ? parseInt(waitMatch[1], 10) : 15;
-        setGeminiRateLimit(retryAfter);
         throw error;
       }
       if (isQuotaError(error)) {
