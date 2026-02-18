@@ -119,7 +119,7 @@ export function getGeminiRateLimitRemaining(): number {
   return remaining > 0 ? remaining : 0;
 }
 
-function setGeminiRateLimit(seconds: number = 60) {
+function setGeminiRateLimit(seconds: number = 15) {
   globalRateLimitUntil = Date.now() + seconds * 1000;
 }
 
@@ -166,8 +166,8 @@ function getApiKeyErrorMessage(error: any): string {
 
 async function withSmartRetry<T>(
   fn: () => Promise<T>,
-  maxRetries: number = 2,
-  initialDelayMs: number = 2000
+  maxRetries: number = 1,
+  initialDelayMs: number = 1500
 ): Promise<T> {
   if (isGeminiRateLimited()) {
     throw new Error(`Rate Limit Active: Please wait ${getGeminiRateLimitRemaining()} seconds before trying again.`);
@@ -183,7 +183,9 @@ async function withSmartRetry<T>(
       }
       if (isRateLimitError(error)) {
         const retryMatch = (error.message || '').match(/retry.?after[:\s]*(\d+)/i);
-        const retryAfter = retryMatch ? parseInt(retryMatch[1], 10) : 60;
+        const waitMatch = (error.message || '').match(/wait\s+(\d+)\s*s/i);
+        const retryAfter = retryMatch ? parseInt(retryMatch[1], 10) :
+                           waitMatch ? parseInt(waitMatch[1], 10) : 15;
         setGeminiRateLimit(retryAfter);
         throw error;
       }

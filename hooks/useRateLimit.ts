@@ -19,7 +19,7 @@ interface UseRateLimitReturn {
   isRateLimited: boolean;
 }
 
-const DEFAULT_RETRY_SECONDS = 60;
+const DEFAULT_RETRY_SECONDS = 15;
 
 export function useRateLimit(): UseRateLimitReturn {
   const [rateLimitState, setRateLimitState] = useState<RateLimitState | null>(null);
@@ -97,7 +97,7 @@ export function parseRateLimitError(error: any): { isRateLimit: boolean; retryAf
     const waitMatch = errorMsg.match(/wait\s+(\d+)\s*s/i);
     const retryMatch = errorMsg.match(/retry.?after[:\s]*(\d+)/i);
     const retryAfter = waitMatch ? parseInt(waitMatch[1], 10) : 
-                       retryMatch ? parseInt(retryMatch[1], 10) : 60;
+                       retryMatch ? parseInt(retryMatch[1], 10) : 15;
     
     let service = 'API';
     if (lowerMsg.includes('gemini') || lowerMsg.includes('google')) {
