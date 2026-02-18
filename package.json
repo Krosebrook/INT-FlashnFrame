@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "db:push": "drizzle-kit push",
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "audit:readiness": "npx tsx scripts/audit-production-readiness.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
