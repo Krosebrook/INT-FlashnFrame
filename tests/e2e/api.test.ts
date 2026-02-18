@@ -44,11 +44,28 @@ describe('AI Key Endpoint', () => {
   });
 });
 
+async function getCSRF(): Promise<{ token: string; cookie: string }> {
+  const res = await fetch(`${API_BASE}/api/csrf-token`);
+  const setCookie = res.headers.get('set-cookie') || '';
+  const csrfCookie = setCookie.split(';')[0];
+  const data = await res.json() as { csrfToken: string };
+  return { token: data.csrfToken, cookie: csrfCookie };
+}
+
+function authHeaders(csrf: { token: string; cookie: string }) {
+  return {
+    'Content-Type': 'application/json',
+    'X-CSRF-Token': csrf.token,
+    'Cookie': csrf.cookie,
+  };
+}
+
 describe('Auth Endpoints', () => {
   it('POST /api/auth/signup rejects missing fields', async () => {
+    const csrf = await getCSRF();
     const { status, body } = await fetchJSON('/api/auth/signup', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(csrf),
       body: JSON.stringify({}),
     });
     expect(status).toBe(400);
@@ -57,9 +74,10 @@ describe('Auth Endpoints', () => {
   });
 
   it('POST /api/auth/signup rejects invalid email', async () => {
+    const csrf = await getCSRF();
     const { status, body } = await fetchJSON('/api/auth/signup', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(csrf),
       body: JSON.stringify({ email: 'not-an-email', password: 'StrongP@ss1!' }),
     });
     expect(status).toBe(400);
@@ -68,9 +86,10 @@ describe('Auth Endpoints', () => {
   });
 
   it('POST /api/auth/signup rejects weak password', async () => {
+    const csrf = await getCSRF();
     const { status, body } = await fetchJSON('/api/auth/signup', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(csrf),
       body: JSON.stringify({ email: 'test@example.com', password: '123' }),
     });
     expect(status).toBe(400);
@@ -79,9 +98,10 @@ describe('Auth Endpoints', () => {
   });
 
   it('POST /api/auth/login rejects missing fields', async () => {
+    const csrf = await getCSRF();
     const { status, body } = await fetchJSON('/api/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(csrf),
       body: JSON.stringify({}),
     });
     expect(status).toBe(400);
@@ -90,27 +110,30 @@ describe('Auth Endpoints', () => {
   });
 
   it('POST /api/auth/login rejects non-existent user', async () => {
+    const csrf = await getCSRF();
     const { status, body } = await fetchJSON('/api/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(csrf),
       body: JSON.stringify({ email: 'nonexistent@nowhere.test', password: 'SomeP@ss1!' }),
     });
     expect([400, 401]).toContain(status);
   });
 
   it('POST /api/auth/magic-link returns 501 without SendGrid', async () => {
+    const csrf = await getCSRF();
     const { status } = await fetchJSON('/api/auth/magic-link', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(csrf),
       body: JSON.stringify({ email: 'test@example.com' }),
     });
     expect(status).toBe(501);
   });
 
   it('POST /api/auth/phone returns 501 without Twilio', async () => {
+    const csrf = await getCSRF();
     const { status } = await fetchJSON('/api/auth/phone', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(csrf),
       body: JSON.stringify({ phone: '+15555555555' }),
     });
     expect(status).toBe(501);
