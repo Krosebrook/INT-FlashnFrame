@@ -1,0 +1,156 @@
+name: Production Readiness Audit
+
+on:
+  pull_request:
+    branches:
+      - main
+      - production
+      - master
+  push:
+    branches:
+      - main
+      - production
+      - master
+  workflow_dispatch:
+  schedule:
+    # Run weekly on Monday at 9 AM UTC
+    - cron: '0 9 * * 1'
+
+jobs:
+  audit:
+    name: Run Production Readiness Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for comprehensive analysis
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run Production Readiness Audit
+        id: audit
+        run: |
+          npm run audit:readiness || true
+          echo "audit_exit_code=$?" >> $GITHUB_OUTPUT
+        continue-on-error: true
+      
+      - name: Upload Audit Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-readiness-audit-${{ github.sha }}
+          path: production-readiness-audit.txt
+          retention-days: 90
+      
+      - name: Comment PR with Audit Summary
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Read the audit report
+            let report = '';
+            try {
+              report = fs.readFileSync('production-readiness-audit.txt', 'utf8');
+            } catch (error) {
+              console.log('Could not read audit report:', error);
+              return;
+            }
+            
+            // Extract key sections for PR comment
+            const lines = report.split('\n');
+            let summary = '## 🔍 Production Readiness Audit Results\n\n';
+            
+            let inScorecard = false;
+            let inBlockers = false;
+            let inVerdict = false;
+            let lineCount = 0;
+            
+            for (const line of lines) {
+              if (line.includes('SECTION A — SCORECARD TABLE')) {
+                inScorecard = true;
+                lineCount = 0;
+                continue;
+              }
+              if (line.includes('SECTION B')) {
+                inScorecard = false;
+              }
+              if (line.includes('SECTION C — BLOCKERS')) {
+                inBlockers = true;
+                lineCount = 0;
+                continue;
+              }
+              if (line.includes('SECTION D')) {
+                inBlockers = false;
+                inVerdict = true;
+                lineCount = 0;
+                continue;
+              }
+              if (line.includes('SECTION E')) {
+                inVerdict = false;
+              }
+              
+              if (inScorecard && lineCount < 25) {
+                summary += line + '\n';
+                lineCount++;
+              }
+              if (inBlockers && lineCount < 20) {
+                summary += line + '\n';
+                lineCount++;
+              }
+              if (inVerdict && lineCount < 10) {
+                summary += line + '\n';
+                lineCount++;
+              }
+            }
+            
+            summary += '\n\n📄 **Full Report**: Download the audit artifact from this workflow run.\n';
+            summary += '\n⚙️ **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n';
+            
+            // Create or update comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('Production Readiness Audit Results')
+            );
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: summary
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: summary
+              });
+            }
+      
+      - name: Check Audit Status
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production'
+        run: |
+          # Fail the workflow if critical blockers are found
+          if grep -q "Safe for Employees: ✗ NO" production-readiness-audit.txt; then
+            echo "::error::Critical blockers found. Application is not safe for employees."
+            exit 1
+          fi
+          echo "::notice::Audit completed. Check the report for recommendations."
