@@ -88,12 +88,6 @@ class ProductionReadinessAuditor {
     }
   }
 
-  private escapeShellArg(arg: string): string {
-    // Escape shell arguments to prevent command injection
-    // Use single quotes and escape any single quotes in the string
-    return `'${arg.replace(/'/g, "'\\''")}'`;
-  }
-
   private findFiles(pattern: string): string[] {
     try {
       // Use array format to avoid shell injection
@@ -1208,7 +1202,7 @@ class ProductionReadinessAuditor {
   }
 }
 
-import { fileURLToPath, pathToFileURL } from "url";
+import { pathToFileURL } from "url";
 
 // CLI Interface
 
