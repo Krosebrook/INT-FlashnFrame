@@ -73,7 +73,7 @@ export async function validateGeminiKey(key: string): Promise<{ valid: boolean; 
   }
 }
 
-export const IMAGE_MODELS = ['gemini-3-pro-image-preview', 'gemini-2.5-flash-preview-image'];
+export const IMAGE_MODELS = ['gemini-2.5-flash-image-preview-05-20', 'gemini-3-pro-image-preview'];
 export const TEXT_MODELS = ['gemini-3-pro-preview', 'gemini-2.5-pro', 'gemini-2.5-flash'];
 
 function isModelNotAvailable(error: any): boolean {
