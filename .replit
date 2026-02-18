@@ -28,7 +28,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev:server & npm run dev"
+args = "npm run dev"
 waitForPort = 5000
 
 [[ports]]
@@ -43,7 +43,7 @@ externalPort = 80
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
 publicDir = "dist"
-run = ["npx", "tsx", "server/index.ts"]
+run = ["npm", "run", "start"]
 
 [objectStorage]
 defaultBucketID = "replit-objstore-2ec71b65-afb9-462e-97d9-ee6c93475640"
