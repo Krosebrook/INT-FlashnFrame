@@ -131,6 +131,7 @@ The project has comprehensive documentation in the `docs/` directory:
 -   **Guides** - Onboarding guide in `docs/how-to-guides/`, troubleshooting in `docs/errors/`
 
 ## Recent Changes (Feb 2026)
+-   **v3.2.1 Rate-Limit Fix (Feb 18)**: Removed `withSmartRetry` wrapper entirely — was multiplying API calls to 6-10 per user action via retry×fallback amplification. Consolidated dual rate-limit system (module-level `globalRateLimitUntil` + React state) into single source of truth in `geminiService.ts`. Added inter-phase rate-limit checks for multi-step functions (article infographic, comparison). Added caching for dependency graph generation. TypeScript clean.
 -   **v3.2.0 Engineering (Feb 18)**: Structured logging with pino (server/logger.ts + pino-http middleware). Bundle optimization via manualChunks — main chunk reduced from 607KB to 108KB (-82%). Dead code cleanup: removed 30 unused components and 2 unused dependencies (recharts, crypto-js). TypeScript clean.
 -   **Documentation audit (Feb 18)**: Created RISK_REGISTER.md (16 findings, 10 fixed), ROADMAP.md (13 WSJF-prioritized items, 3 done), DELIVERABLES.md (APIs, auth flows, security posture). Updated ARCHITECTURE.md with full-stack ASCII diagram including Express server, auth, and security layers. Updated FEATURES.md with implementation matrix (29 shipped, 8 partial, 8 UI-only).
 -   **v3.1.0**: Fixed manifest.json (removed non-existent files), Gemini model fallback on 429/quota errors, GitHub API proxy endpoint.
