@@ -78,6 +78,16 @@ async function startServer() {
     throw new Error("DATABASE_URL environment variable is required. Provision a database first.");
   }
 
+  const baseUrl = process.env.BASE_URL;
+  const replitDomains = process.env.REPLIT_DOMAINS;
+  if (baseUrl) {
+    logger.info({ BASE_URL: baseUrl }, "OAuth domain from BASE_URL (explicit override)");
+  } else if (replitDomains) {
+    logger.info({ REPLIT_DOMAINS: replitDomains }, "OAuth domain from REPLIT_DOMAINS");
+  } else {
+    logger.warn("Neither BASE_URL nor REPLIT_DOMAINS set — OAuth callback will use req.hostname");
+  }
+
   await setupAuth(app);
   registerAuthRoutes(app);
 

@@ -3,10 +3,37 @@ import { Strategy, type VerifyFunction } from "openid-client/passport";
 
 import passport from "passport";
 import session from "express-session";
-import type { Express, RequestHandler } from "express";
+import type { Express, Request, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { authStorage } from "./storage";
+import { logger } from "../../logger";
+
+function getCanonicalDomain(req: Request): string {
+  const baseUrl = process.env.BASE_URL;
+  if (baseUrl) {
+    try {
+      const parsed = new URL(baseUrl);
+      return parsed.hostname;
+    } catch {
+      logger.warn({ BASE_URL: baseUrl }, "Invalid BASE_URL, ignoring");
+    }
+  }
+
+  const replitDomains = process.env.REPLIT_DOMAINS;
+  if (replitDomains) {
+    const domains = replitDomains.split(",").map(d => d.trim()).filter(Boolean);
+    const matchingDomain = domains.find(d => d === req.hostname);
+    if (matchingDomain) {
+      return matchingDomain;
+    }
+    if (domains.length > 0) {
+      return domains[0];
+    }
+  }
+
+  return req.hostname;
+}
 
 const getOidcConfig = memoize(
   async () => {
@@ -79,19 +106,19 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  // Keep track of registered strategies
   const registeredStrategies = new Set<string>();
 
-  // Helper function to ensure strategy exists for a domain
   const ensureStrategy = (domain: string) => {
     const strategyName = `replitauth:${domain}`;
     if (!registeredStrategies.has(strategyName)) {
+      const callbackURL = `https://${domain}/api/callback`;
+      logger.info({ domain, callbackURL }, "Registering OAuth strategy");
       const strategy = new Strategy(
         {
           name: strategyName,
           config,
           scope: "openid email profile offline_access",
-          callbackURL: `https://${domain}/api/callback`,
+          callbackURL,
         },
         verify
       );
@@ -104,27 +131,38 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    const domain = getCanonicalDomain(req);
+    logger.info(
+      { reqHostname: req.hostname, resolvedDomain: domain, replitDomains: process.env.REPLIT_DOMAINS },
+      "OAuth login initiated"
+    );
+    ensureStrategy(domain);
+    passport.authenticate(`replitauth:${domain}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
-    ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    const domain = getCanonicalDomain(req);
+    logger.info(
+      { reqHostname: req.hostname, resolvedDomain: domain },
+      "OAuth callback received"
+    );
+    ensureStrategy(domain);
+    passport.authenticate(`replitauth:${domain}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
     })(req, res, next);
   });
 
   app.get("/api/logout", (req, res) => {
+    const domain = getCanonicalDomain(req);
     req.logout(() => {
       res.redirect(
         client.buildEndSessionUrl(config, {
           client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+          post_logout_redirect_uri: `https://${domain}`,
         }).href
       );
     });
