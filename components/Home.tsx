@@ -18,7 +18,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       <div className="text-center space-y-6 pt-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm font-mono text-slate-300 mb-2">
             <Sparkles className="w-4 h-4 text-fuchsia-400" />
-            <span>Powered by Nano Banana Pro</span>
+            <span>Flash-n-Frame</span>
         </div>
         
         <h1 className="text-6xl md:text-7xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-200 to-slate-500 font-sans leading-tight">

@@ -138,7 +138,7 @@ const AppContent: React.FC = () => {
       <footer className="py-6 mt-auto border-t border-white/5 transition-colors">
         <div className="max-w-7xl mx-auto text-center px-4">
           <p className="text-xs font-mono text-slate-600">
-            <span className="text-violet-500/70">link</span>:<span className="text-emerald-500/70">ink</span>$ Powered by Nano Banana Pro | Press <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded-md text-slate-400">Shift + ?</kbd> for shortcuts
+            <span className="text-violet-500/70">Flash</span>-<span className="text-emerald-500/70">n</span>-Frame | Press <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded-md text-slate-400">Shift + ?</kbd> for shortcuts
           </p>
         </div>
       </footer>
