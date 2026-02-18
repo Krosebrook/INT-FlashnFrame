@@ -99,10 +99,10 @@ const API_KEY_SECTIONS: ApiKeySection[] = [
     fields: [
       {
         key: 'hubspotKey',
-        label: 'HubSpot API Key',
+        label: 'HubSpot Private App Token',
         placeholder: 'pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
         icon: <Users className="w-5 h-5" />,
-        helpUrl: 'https://app.hubspot.com/settings/private-apps',
+        helpUrl: 'https://developers.hubspot.com/docs/api/private-apps',
       },
       {
         key: 'freshdeskKey',
@@ -172,8 +172,8 @@ const API_KEY_SECTIONS: ApiKeySection[] = [
       },
       {
         key: 'teamsWebhook',
-        label: 'Microsoft Teams Webhook URL',
-        placeholder: 'https://outlook.office.com/webhook/...',
+        label: 'Microsoft Teams Workflow Webhook URL',
+        placeholder: 'https://prod-xx.region.logic.azure.com/workflows/...',
         icon: <MessageSquare className="w-5 h-5" />,
         helpUrl: 'https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook',
       },
