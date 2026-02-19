@@ -73,7 +73,7 @@ export async function validateGeminiKey(key: string): Promise<{ valid: boolean; 
   }
 }
 
-export const IMAGE_MODELS = ['gemini-3-pro-image-preview', 'gemini-2.5-flash-preview-image'];
+export const IMAGE_MODELS = ['gemini-2.5-flash-image-preview-05-20', 'gemini-3-pro-image-preview'];
 export const TEXT_MODELS = ['gemini-3-pro-preview', 'gemini-2.5-pro', 'gemini-2.5-flash'];
 
 function isModelNotAvailable(error: any): boolean {
@@ -86,7 +86,12 @@ export async function withModelFallback<T>(
   models: string[],
   callFn: (model: string) => Promise<T>
 ): Promise<T> {
+  if (isGeminiRateLimited()) {
+    throw new Error(`Rate Limit Active: Please wait ${getGeminiRateLimitRemaining()} seconds before trying again.`);
+  }
+
   let lastError: any;
+  let rateLimitHitCount = 0;
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
     const hasMoreModels = i < models.length - 1;
@@ -94,17 +99,35 @@ export async function withModelFallback<T>(
       return await callFn(model);
     } catch (error: any) {
       lastError = error;
+
+      if (isApiKeyError(error)) {
+        throw new Error(getApiKeyErrorMessage(error));
+      }
+
       if (isModelNotAvailable(error)) {
         console.warn(`Model ${model} not available, trying fallback...`);
         continue;
       }
       if (hasMoreModels && (isRateLimitError(error) || isQuotaError(error))) {
+        rateLimitHitCount++;
         console.warn(`Model ${model} hit rate/quota limit, trying fallback...`);
         continue;
+      }
+      if (isRateLimitError(error)) {
+        rateLimitHitCount++;
       }
       throw error;
     }
   }
+
+  if (rateLimitHitCount > 0 && lastError && (isRateLimitError(lastError) || isQuotaError(lastError))) {
+    const retryMatch = (lastError.message || '').match(/retry.?after[:\s]*(\d+)/i);
+    const waitMatch = (lastError.message || '').match(/wait\s+(\d+)\s*s/i);
+    const retryAfter = retryMatch ? parseInt(retryMatch[1], 10) :
+                       waitMatch ? parseInt(waitMatch[1], 10) : 15;
+    setGeminiRateLimit(retryAfter);
+  }
+
   throw lastError || new Error('All models unavailable');
 }
 
@@ -119,7 +142,7 @@ export function getGeminiRateLimitRemaining(): number {
   return remaining > 0 ? remaining : 0;
 }
 
-function setGeminiRateLimit(seconds: number = 60) {
+export function setGeminiRateLimit(seconds: number = 15) {
   globalRateLimitUntil = Date.now() + seconds * 1000;
 }
 
@@ -164,43 +187,6 @@ function getApiKeyErrorMessage(error: any): string {
   return 'API key error. Please verify your Gemini API key in Settings.';
 }
 
-async function withSmartRetry<T>(
-  fn: () => Promise<T>,
-  maxRetries: number = 2,
-  initialDelayMs: number = 2000
-): Promise<T> {
-  if (isGeminiRateLimited()) {
-    throw new Error(`Rate Limit Active: Please wait ${getGeminiRateLimitRemaining()} seconds before trying again.`);
-  }
-
-  let delay = initialDelayMs;
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error: any) {
-      if (isApiKeyError(error)) {
-        throw new Error(getApiKeyErrorMessage(error));
-      }
-      if (isRateLimitError(error)) {
-        const retryMatch = (error.message || '').match(/retry.?after[:\s]*(\d+)/i);
-        const retryAfter = retryMatch ? parseInt(retryMatch[1], 10) : 60;
-        setGeminiRateLimit(retryAfter);
-        throw error;
-      }
-      if (isQuotaError(error)) {
-        throw error;
-      }
-      if (attempt === maxRetries) throw error;
-      const msg = (error?.message || '').toLowerCase();
-      if (msg.includes('403') || msg.includes('404') || msg.includes('safety') || msg.includes('permission')) {
-        throw error;
-      }
-      await new Promise(resolve => setTimeout(resolve, delay));
-      delay *= 2;
-    }
-  }
-  throw new Error('Max retries exceeded');
-}
 
 const CACHE_TTL = 5 * 60 * 1000;
 const IMAGE_CACHE_TTL = 10 * 60 * 1000;
@@ -291,7 +277,7 @@ export async function generateInfographic(
   const cached = apiCache.get<string>(cacheKey);
   if (cached) return cached;
 
-  return deduplicatedFetch(cacheKey, () => withSmartRetry(async () => {
+  return deduplicatedFetch(cacheKey, async () => {
     const client = await ensureAiClient();
     return withModelFallback(IMAGE_MODELS, async (model) => {
       const response = await client.models.generateContent({
@@ -315,7 +301,7 @@ export async function generateInfographic(
       }
       return null;
     });
-  })).catch((error: any) => {
+  }).catch((error: any) => {
     console.error("Gemini infographic generation failed:", error);
     
     const errorMsg = (error.message || error.toString()).toLowerCase();
@@ -356,7 +342,11 @@ export async function generateDependencyGraph(
   dependencies: DependencyInfo[],
   ecosystem: string
 ): Promise<string | null> {
-  // Group dependencies by type
+  const depHash = dependencies.slice(0, 30).map(d => d.name).join(',');
+  const cacheKey = createCacheKey('depGraph', repoName, ecosystem, depHash);
+  const cached = apiCache.get<string>(cacheKey);
+  if (cached) return cached;
+
   const prodDeps = dependencies.filter(d => d.type === 'production');
   const devDeps = dependencies.filter(d => d.type === 'development');
   const peerDeps = dependencies.filter(d => d.type === 'peer');
@@ -414,6 +404,7 @@ LAYOUT REQUIREMENTS:
       if (parts) {
         for (const part of parts) {
           if (part.inlineData && part.inlineData.data) {
+            apiCache.set(cacheKey, part.inlineData.data, IMAGE_CACHE_TTL);
             return part.inlineData.data;
           }
         }
@@ -740,7 +731,7 @@ Return ONLY the JSON, no markdown.`;
   const cached = apiCache.get<CodeReviewResult>(cacheKey);
   if (cached) return cached;
 
-  return deduplicatedFetch(cacheKey, () => withSmartRetry(async () => {
+  return deduplicatedFetch(cacheKey, async () => {
     const client = await ensureAiClient();
     return withModelFallback(TEXT_MODELS, async (model) => {
       const response = await client.models.generateContent({
@@ -767,7 +758,7 @@ Return ONLY the JSON, no markdown.`;
         return fallback;
       }
     });
-  })).catch((e) => {
+  }).catch((e: any) => {
     console.error("Code review failed", e);
     throw e;
   });
@@ -837,7 +828,7 @@ Return ONLY the JSON, no markdown.`;
   const cached = apiCache.get<TestGenerationResult>(cacheKey);
   if (cached) return cached;
 
-  return deduplicatedFetch(cacheKey, () => withSmartRetry(async () => {
+  return deduplicatedFetch(cacheKey, async () => {
     const client = await ensureAiClient();
     return withModelFallback(TEXT_MODELS, async (model) => {
       const response = await client.models.generateContent({
@@ -864,7 +855,7 @@ Return ONLY the JSON, no markdown.`;
         return fallback;
       }
     });
-  })).catch((e) => {
+  }).catch((e: any) => {
     console.error("Test generation failed", e);
     throw e;
   });
@@ -929,7 +920,7 @@ Return ONLY the JSON, no markdown.`;
   const cached = apiCache.get<DocumentationResult>(cacheKey);
   if (cached) return cached;
 
-  return deduplicatedFetch(cacheKey, () => withSmartRetry(async () => {
+  return deduplicatedFetch(cacheKey, async () => {
     const client = await ensureAiClient();
     return withModelFallback(TEXT_MODELS, async (model) => {
       const response = await client.models.generateContent({
@@ -955,7 +946,7 @@ Return ONLY the JSON, no markdown.`;
         return fallback;
       }
     });
-  })).catch((e) => {
+  }).catch((e: any) => {
     console.error("Documentation generation failed", e);
     throw e;
   });
@@ -1059,7 +1050,7 @@ Return ONLY the JSON, no markdown.`;
   const cached = apiCache.get<GapAnalysisResult>(cacheKey);
   if (cached) return cached;
 
-  return deduplicatedFetch(cacheKey, () => withSmartRetry(async () => {
+  return deduplicatedFetch(cacheKey, async () => {
     const client = await ensureAiClient();
     return withModelFallback(TEXT_MODELS, async (model) => {
       const response = await client.models.generateContent({
@@ -1086,7 +1077,7 @@ Return ONLY the JSON, no markdown.`;
         return fallback;
       }
     });
-  })).catch((e) => {
+  }).catch((e: any) => {
     console.error("Gap analysis failed", e);
     throw e;
   });
@@ -1153,6 +1144,11 @@ export async function generateArticleInfographic(
         structuralSummary = `Create an infographic about: ${url}. Translate text to ${language}.`;
     }
 
+    if (isGeminiRateLimited()) {
+      const remaining = getGeminiRateLimitRemaining();
+      throw new Error(`Rate limited. Please wait ${remaining} seconds before trying again.`);
+    }
+
     if (onProgress) onProgress("DESIGNING & RENDERING INFOGRAPHIC...");
 
     let styleGuidelines = "";
@@ -1191,29 +1187,27 @@ export async function generateArticleInfographic(
     - GOAL: The image must be informative and readable as a standalone graphic.
     `;
 
-    const imageData = await withSmartRetry(async () => {
-        const client = await ensureAiClient();
-        return withModelFallback(IMAGE_MODELS, async (model) => {
-            const response = await client.models.generateContent({
-                model,
-                contents: {
-                    parts: [{ text: imagePrompt }],
-                },
-                config: {
-                    responseModalities: [Modality.IMAGE],
-                },
-            });
+    const client2 = await ensureAiClient();
+    const imageData = await withModelFallback(IMAGE_MODELS, async (model) => {
+        const response = await client2.models.generateContent({
+            model,
+            contents: {
+                parts: [{ text: imagePrompt }],
+            },
+            config: {
+                responseModalities: [Modality.IMAGE],
+            },
+        });
 
-            const parts = response.candidates?.[0]?.content?.parts;
-            if (parts) {
-                for (const part of parts) {
-                    if (part.inlineData && part.inlineData.data) {
-                        return part.inlineData.data;
-                    }
+        const parts = response.candidates?.[0]?.content?.parts;
+        if (parts) {
+            for (const part of parts) {
+                if (part.inlineData && part.inlineData.data) {
+                    return part.inlineData.data;
                 }
             }
-            return null;
-        });
+        }
+        return null;
     });
     return { imageData, citations };
 }
@@ -1292,6 +1286,11 @@ export async function generateComparisonInfographic(
     comparisonSummary = `Create a comparison infographic for these sources: ${urls.join(' vs ')}. Translate text to ${language}.`;
   }
 
+  if (isGeminiRateLimited()) {
+    const remaining = getGeminiRateLimitRemaining();
+    throw new Error(`Rate limited. Please wait ${remaining} seconds before trying again.`);
+  }
+
   if (onProgress) onProgress("DESIGNING COMPARISON VISUAL...");
 
   let styleGuidelines = "";
@@ -1325,29 +1324,27 @@ export async function generateComparisonInfographic(
   - TYPOGRAPHY: Clean, highly readable sans-serif fonts.
   `;
 
-  const imageData = await withSmartRetry(async () => {
-    const client = await ensureAiClient();
-    return withModelFallback(IMAGE_MODELS, async (model) => {
-      const response = await client.models.generateContent({
-        model,
-        contents: {
-          parts: [{ text: imagePrompt }],
-        },
-        config: {
-          responseModalities: [Modality.IMAGE],
-        },
-      });
+  const client2 = await ensureAiClient();
+  const imageData = await withModelFallback(IMAGE_MODELS, async (model) => {
+    const response = await client2.models.generateContent({
+      model,
+      contents: {
+        parts: [{ text: imagePrompt }],
+      },
+      config: {
+        responseModalities: [Modality.IMAGE],
+      },
+    });
 
-      const parts = response.candidates?.[0]?.content?.parts;
-      if (parts) {
-        for (const part of parts) {
-          if (part.inlineData && part.inlineData.data) {
-            return part.inlineData.data;
-          }
+    const parts = response.candidates?.[0]?.content?.parts;
+    if (parts) {
+      for (const part of parts) {
+        if (part.inlineData && part.inlineData.data) {
+          return part.inlineData.data;
         }
       }
-      return null;
-    });
+    }
+    return null;
   });
   return { imageData, citations };
 }
@@ -1566,39 +1563,37 @@ export async function suggestProjectTasks(repoName: string, fileTree: RepoFileTr
  * Uses Generative AI to apply style transfer or edits to an image.
  */
 export async function editImageWithGemini(base64Data: string, mimeType: string, prompt: string): Promise<string | null> {
-  return withSmartRetry(async () => {
-    const client = await ensureAiClient();
-    return withModelFallback(IMAGE_MODELS, async (model) => {
-      const response = await client.models.generateContent({
-        model,
-        contents: {
-          parts: [
-            {
-              inlineData: {
-                data: base64Data,
-                mimeType: mimeType,
-              },
+  const client = await ensureAiClient();
+  return withModelFallback(IMAGE_MODELS, async (model) => {
+    const response = await client.models.generateContent({
+      model,
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType: mimeType,
             },
-            {
-              text: prompt,
-            },
-          ],
-        },
-        config: {
-          responseModalities: [Modality.IMAGE],
-        },
-      });
+          },
+          {
+            text: prompt,
+          },
+        ],
+      },
+      config: {
+        responseModalities: [Modality.IMAGE],
+      },
+    });
 
-      const parts = response.candidates?.[0]?.content?.parts;
-      if (parts) {
-        for (const part of parts) {
-          if (part.inlineData && part.inlineData.data) {
-            return part.inlineData.data;
-          }
+    const parts = response.candidates?.[0]?.content?.parts;
+    if (parts) {
+      for (const part of parts) {
+        if (part.inlineData && part.inlineData.data) {
+          return part.inlineData.data;
         }
       }
-      return null;
-    });
+    }
+    return null;
   });
 }
 
@@ -1620,23 +1615,21 @@ export async function generateCodeFromImage(base64Image: string, prompt: string)
    User specific request: ${prompt}
    `;
 
-   return withSmartRetry(async () => {
-     const client = await ensureAiClient();
-     return withModelFallback(TEXT_MODELS, async (model) => {
-       const response = await client.models.generateContent({
-         model,
-         contents: {
-           parts: [
-             { inlineData: { mimeType: 'image/png', data: base64Image } },
-             { text: fullPrompt }
-           ]
-         }
-       });
-       
-       let code = response.text || "";
-       code = code.replace(/^```tsx?\n/, '').replace(/^```\n/, '').replace(/\n```$/, '');
-       return code;
+   const client = await ensureAiClient();
+   return withModelFallback(TEXT_MODELS, async (model) => {
+     const response = await client.models.generateContent({
+       model,
+       contents: {
+         parts: [
+           { inlineData: { mimeType: 'image/png', data: base64Image } },
+           { text: fullPrompt }
+         ]
+       }
      });
+     
+     let code = response.text || "";
+     code = code.replace(/^```tsx?\n/, '').replace(/^```\n/, '').replace(/\n```$/, '');
+     return code;
    });
 }
 

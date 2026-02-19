@@ -93,6 +93,7 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate }) => {
 
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     if (checkBeforeCall()) {
       setError(`Rate limit active. Please wait ${remainingSeconds}s before trying again.`);
       return;
@@ -140,7 +141,7 @@ const RepoAnalyzer: React.FC<RepoAnalyzerProps> = ({ onNavigate }) => {
   };
 
   const handleGenerate3D = async () => {
-    if (!currentFileTree || !currentRepoName) return;
+    if (!currentFileTree || !currentRepoName || generating3D) return;
     if (checkBeforeCall()) {
       setError(`Rate limit active. Please wait ${remainingSeconds}s before trying again.`);
       return;

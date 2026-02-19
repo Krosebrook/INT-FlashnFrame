@@ -11,6 +11,7 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
 import { logger } from "./logger";
+import { getGitHubToken } from "./github";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -260,8 +261,13 @@ async function startServer() {
     const clientAuth = req.headers.authorization;
     if (clientAuth && clientAuth.startsWith("Bearer ")) {
       headers["Authorization"] = clientAuth;
-    } else if (process.env.GITHUB_TOKEN) {
-      headers["Authorization"] = `Bearer ${process.env.GITHUB_TOKEN}`;
+    } else {
+      const token = await getGitHubToken();
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      } else {
+        logger.warn("No GitHub token available — requests will be unauthenticated (60 req/hr limit)");
+      }
     }
 
     for (const branch of branches) {
